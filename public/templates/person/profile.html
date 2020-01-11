@@ -67,7 +67,7 @@
         var attributeItems = [];
         const attributeElement = $('#attributes');
         const params = {
-            'identifiers': 'job,address',
+            'identifiers': 'job,address,about',
             'xhrFields': {
                 withCredentials: true
             }
@@ -79,19 +79,20 @@
                 field_type = data.field_type,
                 is_required = data.is_required,
                 identifier = data.identifier,
-                label = data.label;
+                label = data.label,
+                placeholder = (data.placeholder ? data.placeholder : '');
 
             if (field_type === 'text') {
                 return '<div class="field">' +
                     '<label>' + label + '</label>' +
-                    '<input name="' + identifier + '" type="text" ' + (is_required ? 'required' : '') + ' value="' + value + '">' +
+                    '<input name="' + identifier + '" type="text" ' + (is_required ? 'required' : '') + ' value="' + value + '" placeholder="' + placeholder + '">' +
                 '</div>';
             }
 
             if (field_type === 'richtext') {
                 return '<div class="field">' +
                     '<label>' + label + '</label>' +
-                    '<textarea name="' + identifier + '" ' + (is_required ? 'required' : '') + '>' + value + '</textarea>';
+                    '<textarea name="' + identifier + '" ' + (is_required ? 'required' : '') + ' placeholder="' + placeholder + '">' + value + '</textarea>';
                 '</div>';
             }
         }

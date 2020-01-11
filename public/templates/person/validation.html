@@ -80,12 +80,13 @@
                 is_verified = data.value.is_verified,
                 identifier = data.identifier,
                 label = data.label,
+                placeholder = (data.placeholder ? data.placeholder : ''),
                 field_type = data.field_type;
 
             return '<div class="field validation-item">' +
                 '<label for="' + identifier + '">' + label + '</label>' +
                 '<div class="ui action input">' +
-                    '<input name="' + identifier + '" type="' + field_type + '" ' + (is_required ? 'required' : '') + ' value="' + value + '">' +
+                    '<input name="' + identifier + '" type="' + field_type + '" ' + (is_required ? 'required' : '') + ' value="' + value + '" placeholder="' + placeholder + '">' +
                     '<button id="requestValidation" class="ui icon button ' + (is_verified ? 'teal' : '' ) + '" ' + (is_verified ? 'disabled="true"' : '') + '" data-identifier="' + identifier + '">' +
                         (is_verified ? '<i class="check circle icon"></i>' : '<i class="check icon"></i>') +
                     '</button>' +
