@@ -7,8 +7,7 @@ from django.utils.translation import ugettext_lazy as _
 from utils.generals import get_model
 
 # LOCAL UTILS
-from apps.beacon.utils.constant import (
-    PUBLISHED, STATUS_CHOICES)
+from apps.beacon.utils.constant import PUBLISHED
 
 Guide = get_model('beacon', 'Guide')
 GuideRevision = get_model('beacon', 'GuideRevision')
@@ -38,5 +37,4 @@ class HomeView(View):
 
         self.context['title'] = _("Beranda")
         self.context['guides'] = guides
-        self.context['STATUS_CHOICES'] = STATUS_CHOICES
         return render(request, self.template_name, self.context)

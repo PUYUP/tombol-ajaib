@@ -27,14 +27,6 @@
                                         </span>
 
                                         <span class="item">
-                                            {% for s in STATUS_CHOICES %}
-                                                {% if s.0 == item.revision_status %}
-                                                    {{ s.1 }}
-                                                {% endif %}
-                                            {% endfor %}
-                                        </span>
-
-                                        <span class="item">
                                             diperbarui {{ item.revision_date_updated }}
                                         </span>
                                     </div>
