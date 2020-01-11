@@ -30,10 +30,10 @@ class HomeView(View):
             )
 
         guides = Guide.objects \
-            .filter() \
             .annotate(
                 num_revision=Count('guide_revisions'),
                 **revision_params) \
+            .filter(revision_status=PUBLISHED) \
             .order_by('-revision_date_updated')
 
         self.context['title'] = _("Beranda")
