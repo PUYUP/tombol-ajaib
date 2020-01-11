@@ -1,0 +1,46 @@
+{% load static %}
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        {% block head %}{% endblock %}
+        
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/reset.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/site.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/container.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/menu.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/grid.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/icon.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/button.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/card.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/bootstrap-grid.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/bootstrap-utilities.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/main.css' %}">
+
+        {% block css %}{% endblock %}
+    </head>
+
+    <body>
+        <header>
+            {% block navbar %}{% endblock %}
+            {% include "templates/navbar.html" %}
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer>
+            {% block footer %}{% endblock %}
+            {% include "templates/footer.html" %}
+        </footer>
+    
+        <script type="text/javascript" src="{% static 'vendors/js/jquery-3.4.1.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/js/js.cookie.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/site.min.js' %}"></script>
+        {% block js %}{% endblock %}
+    </body>
+</html>

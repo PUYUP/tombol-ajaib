@@ -1,0 +1,29 @@
+<nav class="ui navbar">
+    <div class="ui container">
+        <div class="ui secondary menu m-0 d-flex w-100 align-items-center">
+            <a href="{% url 'home' %}" class="text-dark">
+                <i class="home large link icon"></i>
+            </a>
+            
+            <div class="right menu">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'person' %}" class="ui item">
+                        Dasbor
+                    </a>
+
+                    <a href="{% url 'logout' %}" class="ui item">
+                        Keluar
+                    </a>
+                {% else %}
+                    <a href="{% url 'register' %}" class="ui item">
+                        Daftar
+                    </a>
+
+                    <a href="{% url 'login' %}" class="ui item">
+                        Masuk
+                    </a>
+                {% endif %}
+            </div>
+        </div> <!-- /.menu -->
+    </div> <!-- /.container -->
+</nav>

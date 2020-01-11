@@ -1,0 +1,54 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container ui">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-12 col-md-10 col-lg-8 col-xl-7">
+                <h1 class="mb-3">Tutorial Saya</h1>
+        
+                <div class="ui divided list">
+                    {% for item in guides %}
+                        <div class="item">
+                            <div class="content">
+                                <a class="header" href="{% url 'guide_revision_detail' item.revision_uuid %}">{{ item.revision_label }}</a>
+
+                                <div class="description">
+                                    <div class="ui horizontal bulleted list">
+                                        <span class="item">
+                                            Rev. {{ item.revision_version }}
+                                        </span>
+
+                                        <span class="item">
+                                            {% for s in STATUS_CHOICES %}
+                                                {% if s.0 == item.revision_status %}
+                                                    {{ s.1 }}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </span>
+
+                                        <span class="item">
+                                            diperbarui {{ item.revision_date_updated }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

@@ -1,0 +1,336 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row justify-content-center align-items-center">
+            <div class="col-12 col-md-7 col-lg-5">
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h1 class="mt-4 mb-3">Keamanan Akun</h1>
+
+                        <div class="ui form">
+                            <div id="validations"></div>
+                        </div>
+                    </div> <!-- /.card body -->
+                </div> <!-- /.card -->
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/js/functions.js' %}"></script>
+
+    <script type="text/javascript">
+        var validationItems = [];
+        const validationElement = $('#validations');
+        const params = {
+            'identifiers': 'email,phone'
+        };
+
+        const securitiesData = [
+            {
+                'identifier': 'security_username',
+                'field_type': 'text',
+                'label': 'Nama Pengguna',
+                'value': '{{ user.username }}',
+            },
+            {
+                'identifier': 'security_email',
+                'field_type': 'email',
+                'label': 'Alamat Email',
+                'value': '{{ user.email }}',
+            },
+            {
+                'identifier': 'security_password',
+                'field_type': 'password',
+                'label': 'Kata Sandi Baru (isi untuk merubah)',
+                'value': '',
+            }
+        ];
+
+        // INPUT ELEMENT
+        function inputElement(data) {
+            var value = (data.value ? data.value : ''),
+                identifier = data.identifier,
+                label = data.label,
+                field_type = data.field_type;
+
+            return '<div class="field validation-item">' +
+                '<label for="' + identifier + '">' + label + '</label>' +
+                '<div class="ui action input">' +
+                    '<input name="' + identifier + '" type="' + field_type + '" value="' + value + '">' +
+                    '<button id="requestValidation" class="ui icon button" data-identifier="' + identifier + '">' +
+                       '<i class="check icon"></i>' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // ...
+        // ELEMENT HANDLER
+        // ...
+        $.each(securitiesData, function(index, item) {
+            var htmlItem = inputElement(item);
+            if (htmlItem) validationItems.push(htmlItem);
+        });
+
+        // Inject to wrapper and show it!
+        validationElement.html(validationItems.join(''));
+
+        // ...
+        // Request validation
+        // System will send SMS or email with validation code
+        // ...
+        $(document).on('click', '#requestValidation', function(e) {
+            e.preventDefault();
+            var identifier = $(this).data('identifier'),
+                new_value = $('[name="' + identifier + '"').val(),
+                index = securitiesData.findIndex(x => x.identifier === identifier),
+                validationItem = securitiesData[index];
+
+            // Append new param
+            validationItem.new_value = new_value;
+
+            // Perfom request secure code
+            if (new_value) {
+                requestValidation($(this), validationItem);
+
+                // Update data global
+                securitiesData[index] = validationItem;
+                $(document.body).data('securitiesData', securitiesData);
+            }
+
+            if (!new_value) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: validationItem.label + ' tidak boleh kosong.'
+                });
+            }
+        });
+
+        function requestValidation($this, data) {
+            var params = {
+                'action': 'request_secure_code',
+                'value': data.value,
+                'new_value': data.new_value,
+                'identifier': data.identifier,
+                'csrfmiddlewaretoken': Cookies.get('csrftoken'),
+            }
+
+            // Check duplicate
+            if (data.identifier == 'security_email' || data.identifier == 'security_username') {
+                duplicateCheck($this, params);
+            } else {
+                requestSecureCode($this, params);
+            }
+        }
+
+        function requestSecureCode($this, params) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/secures/',
+                data: params,
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                beforeSend: function(xhr) {
+                    $this.addClass('loading');
+                },
+                success: function(response) {
+                    // Reset cookies
+                    Cookies.remove('secure_hash');
+                    Cookies.remove('secure_hash', {path: ''});
+
+                    // Then set again with new value
+                    Cookies.set('secure_hash', response.secure_hash);
+
+                    // Run validation
+                    confirmSecureCode(params);
+                },
+                error: function(error) {
+                    
+                },
+                complete: function(xhr, status) {
+                    $this.removeClass('loading');
+                }
+            });
+        }
+
+        // ...
+        // DUPLICATE CHECK
+        // ...
+        function duplicateCheck($this, params) {
+            var identifier = params.identifier,
+                identifier = identifier.replace('security_', '');
+
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/persons/duplicate-check/',
+                data: {[identifier]: params.new_value},
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                beforeSend: function(xhr) {
+                    $this.addClass('loading');
+                },
+                success: function(response) {
+                    requestSecureCode($this, params);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            if (Array.isArray(item)) {
+                                errorMessage.push(item.join(' '));
+                            } else {
+                                errorMessage.push(item);
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $this.removeClass('loading');
+                }
+            });
+        }
+
+        // ...
+        // Confirm secure code
+        // ...
+        function confirmSecureCode(data) {
+            Swal.fire({
+                title: 'Kode Otentikasi',
+                text: data.instruction,
+                html: 'Tidak menerima kode otentikasi?<br /><a href="#" id="resend-secure-code" data-identifier="' + data.identifier + '"><b>Kirim ulang</b></a>',
+                input: 'text',
+                inputAttributes: {
+                    autocapitalize: 'on',
+                    placeholder: 'Kode Otentikasi',
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Validasi',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                customClass: {
+                    input: 'input-class text-center text-keyup',
+                },
+                preConfirm: (secureCode) => {
+                    if (secureCode) {
+                        var identifier = data.identifier,
+                            identifier = identifier.replace('security_', '');
+
+                        const params = {
+                            'secure_code': secureCode,
+                            'secure_hash': Cookies.get('secure_hash'),
+                            [identifier]: $('input[name="' + data.identifier + '"]').val(),
+                        }
+
+                        return fetch('/api/person/persons/{{ user.person.uuid }}/', {
+                            method: 'PATCH',
+                            cache: 'no-cache',
+                            body: JSON.stringify(params),
+                            headers: {
+                                'X-CSRFToken': Cookies.get('csrftoken'),
+                                'Content-Type': 'application/json',
+                            }
+                        }).then(response => {
+                            if (!response.ok) {
+                                if (response.status == '406' || response.status == '400') {
+                                    return response.json();
+                                }
+                            }
+                        }).then(error => {
+                            // If error data not empty
+                            if (error) {
+                                var errorMessage = [];
+
+                                $.each(error, function(index, item) {
+                                    if (Array.isArray(item)) {
+                                        errorMessage.push(item.join(' '));
+                                    } else {
+                                        errorMessage.push(item);
+                                    }
+                                });
+
+                                if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                                // Show error
+                                Swal.showValidationMessage(errorMessage.join('<br /><br />'));
+                            }
+                        }).catch(error => {
+                            if (error) {
+                                
+                            }
+                        });
+                        
+                    }
+                }
+            }).then((result) => {
+                if (result.value) {
+                    Swal.fire({
+                        title: 'Sukses!',
+                        text: 'Tindakan berhasil. Menyegarkan...',
+                        icon: 'success',
+                        showCloseButton: false,
+                        showCancelButton: false,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+
+                    location.reload();
+                    Cookies.remove('secure_hash');
+                }
+
+                // Cancel
+                if (result.dismiss == 'cancel') {
+                    var $validationInput = $('[name="' + data.identifier + '"'),
+                        validationElement = $validationInput.closest('.validation-item');
+            
+                    $validationInput.val(data.value);
+                }
+            });
+        }
+
+        // ...
+        // Send secure code
+        // ...
+        $(document).on('click', '#resend-secure-code', function(e) {
+            e.preventDefault();
+
+            var identifier = $(this).data('identifier'),
+                securitiesData = $(document.body).data('securitiesData'),
+                index = securitiesData.findIndex(x => x.identifier === identifier),
+                validationItem = securitiesData[index];
+
+            requestValidation($(this), validationItem);
+        });
+    </script>
+{% endblock %}

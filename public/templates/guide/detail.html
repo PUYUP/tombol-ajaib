@@ -1,0 +1,423 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container ui">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-12 col-md-10 col-lg-8 col-xl-7">
+                <h1 class="mb-3">
+                    <span class="text-muted border-bottom font-weight-light">Rev. {{ revision.version }}: </span>
+                    {{ revision.label }}
+                </h1>
+
+                <div class="border-bottom pb-4 mb-4">
+                    <div class="d-flex w-100">
+                        <span class="mr-auto">
+                            <span class="d-block w-100 font-weight-bold"><i class="icon asterisk"></i> Sorotan</span>
+                            {% if not introductions.exists %}Tidak ada sorotan.{% endif %}
+                        </span>
+
+                        {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+                            <span>
+                                <button type="button" id="add-introduction" class="ui basic grey button mini">Tambah</button>
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if introductions.exists %}
+                        <div class="ui list">
+                            {% for item in introductions %}
+                                <div class="item">
+                                    <i class="check icon"></i>
+
+                                    <div class="content">
+                                        <span id="introduction-description">{{ item.description }}</span>
+
+                                        {% if item.creator == user.person %}
+                                            <a href="#" id="delete-introduction" class="ml-2 text-danger" data-uuid="{{ item.uuid }}">Hapus</a>
+                                            <a href="#" id="change-introduction" class="ml-2" data-uuid="{{ item.uuid }}">Sunting</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <p>
+                    <span class="d-block w-100 font-weight-bold"><i class="icon clock outline"></i> Pembaruan</span>
+                    {{ revision.date_updated }}
+                </p>
+
+                {% if revision.creator == user.person %}
+                    <p>
+                        <span class="d-block w-100 font-weight-bold"><i class="icon bullhorn"></i> Status</span>
+                        <span class="text-uppercase">{{ revision.get_status_display }}</span>
+                    </p>
+                {% endif %}
+
+                <article class="mb-4">
+                    <span class="d-block w-100 font-weight-bold"><i class="icon file alternate outline"></i> Keterangan</span>
+                    {{ revision.description }}
+                </article>
+
+                <p>
+                    <span class="d-block w-100 font-weight-bold"><i class="icon tasks"></i> Changelog</span>
+                    {{ revision.changelog }}
+                </p>
+
+                {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+                    <button type="button" id="update" class="ui secondary button" data-uuid="{{ item.uuid }}">
+                        <i class="ui icon file alternate outline"></i>
+                        Perbarui
+                    </button>
+                {% endif %}
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <div class="ui modal small introduction-modal">
+            <div class="header">
+                Tambah Sorotan
+            </div>
+
+            <div class="image content">
+                <form class="ui form w-100">
+                    <div class="field">
+                        <div class="ui input">
+                            <textarea name="description" rows="4" placeholder="Isi sorotan, ringkas, padat dan jelas" required></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="actions d-flex w-100">
+                <div id="cancel" class="ui button close mr-auto">Batal</div>
+
+                <div id="submit" class="ui button primary">
+                    <i class="check icon"></i>
+                    Simpan
+                </div>
+            </div>
+        </div> <!-- /.modal add introduction -->
+    {% endif %}
+{% endblock %}
+
+{% block css %}
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/loader.min.css' %}">
+
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/modal.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/dimmer.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/transition.min.css' %}">
+    {% endif %}
+
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
+{% endblock %}
+
+{% block js %}
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/modal.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/dimmer.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/transition.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+        <script type="text/javascript">
+            // ...
+            // SUBMIT HANDLER
+            // ...
+            function submitHandler($element=null, $fields) {
+                $.ajax({
+                    method: 'POST',
+                    url: '/api/beacon/guides-revisions/',
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$fields,
+                        csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                    },
+                    success: function(response) {
+                        window.location.replace(response.url);
+                    },
+                    error: function(error) {
+                        $($element).removeClass('loading');
+
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ...
+            // UPDATE revisions
+            // ...
+            $(document).on('click', '#update', function(e) {
+                e.preventDefault();
+                $(this).addClass('loading');
+
+                var fields = {
+                    'uuid': '{{ revision.uuid }}',
+                    'guide_uuid': '{{ revision.guide.uuid }}',
+                }
+
+                submitHandler($(this), fields);
+            });
+
+            // ...
+            // CREATE INTRODUCTIONS
+            // ...
+            $introductionModal = $('.introduction-modal').modal({
+                autofocus: false,
+                closable: false,
+                onShow: function() {
+                    var $element = $(this);
+                },
+                onHide: function($element) {
+                    var $element = $(this);
+
+                    $element.find('.header').text('Tambah Sorotan');
+                    $element.find('textarea').val('');
+                    $element.find('form').removeAttr('data-uuid');
+                }
+            });
+
+            $(document).on('click', '#add-introduction', function(event) {
+                event.preventDefault();
+                $introductionModal.modal('show');
+            });
+
+            $(document).on('click', '#cancel', function(event) {
+                event.preventDefault();
+                $introductionModal.modal('hide');
+            });
+
+            $(document).on('click', '#submit', function(event) {
+                event.preventDefault();
+                $('.form').submit();
+                $(this).addClass('disabled');
+            });
+
+            // ...
+            // SUBMIT INTRODUCTIONS HANDLER
+            // ...
+            function submitIntroductionHandler($element=null, $fields) {
+                var method = ($fields.uuid ? 'PATCH': 'POST');
+                var param = ($fields.uuid ? $fields.uuid + '/' : '');
+
+                $.ajax({
+                    method: method,
+                    url: '/api/beacon/introductions/' + param,
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$fields,
+                        object_id: '{{ revision.pk }}',
+                        model_name: '{{ revisio_model_name }}',
+                        csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                    },
+                    success: function(response) {
+                        window.location.reload();
+                    },
+                    error: function(error) {
+                        $($element).removeClass('loading');
+                        $('#submit').removeClass('disabled');
+
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ...
+            // FORM VALIDATION
+            // ...
+            $('.form').form({
+                on: 'blur',
+                inline: true,
+                fields: {
+                    description: {
+                        identifier: 'description',
+                        rules: [
+                            {
+                                type   : 'empty',
+                                prompt : 'Keterangan tidak boleh kosong'
+                            },
+                            {
+                                type   : 'minLength[25]',
+                                prompt : 'Keterangan minimal 25 karakter'
+                            }
+                        ]
+                    },
+                },
+                onSuccess: function(event, fields) {
+                    // Prevent default form submit!
+                    // We use REST API for handle login.
+                    if (event) {
+                        event.preventDefault();
+                        
+                        $(event.target).addClass('loading');
+
+                        fields.uuid = $(event.target).data('uuid');
+                        submitIntroductionHandler(event.target, fields);
+                    }
+                }
+            });
+
+            // ...
+            // DELETE INTRODUCTION
+            // ...
+            $(document).on('click', '#delete-introduction', function(event) {
+                event.preventDefault();
+
+                const uuid = $(this).data('uuid');
+
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: "Tindakan ini tidak bisa dikembalikan",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Hapus',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.value) {
+                        if (uuid) introductionDeleteHandler(uuid);
+                    } else if (
+                        /* Read more about handling dismissals below */
+                        result.dismiss === Swal.DismissReason.cancel
+                    ) {
+                        // Cancel...
+                    }
+                });
+            });
+
+            // ...
+            // INTRODUCTION DELETE HANDLER
+            // ...
+            function introductionDeleteHandler(uuid) {
+                $.ajax({
+                    method: 'DELETE',
+                    url: '/api/beacon/introductions/' + uuid + '/',
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Terhapus!',
+                            text: 'Sedang mengalihkan...',
+                            showCloseButton: false,
+                            showCancelButton: false,
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                        });
+
+                        window.location.reload();
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ...
+            // CHANGE INTRODUCTIONS
+            // ...
+            $(document).on('click', '#change-introduction', function(event) {
+                event.preventDefault();
+
+                var $this = $(this),
+                    uuid = $this.data('uuid'),
+                    description = $this.closest('.content').find('#introduction-description').html();
+
+                $introductionModal.addClass('change');
+                $introductionModal.find('.header').text('Sunting Sorotan');
+                $introductionModal.find('textarea').val(description);
+                $introductionModal.modal('show');
+                $introductionModal.find('form').attr('data-uuid', uuid);
+            });
+        </script>
+    {% endif %}
+{% endblock %}

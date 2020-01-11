@@ -1,0 +1,325 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="ui container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+                <div class="d-flex w-100 align-items-center mb-4">
+                    <h1 class="header mr-auto">Set Ulang Kata Sandi</h1>
+                </div>
+
+                <form class="ui form form-recovery">
+                    <div class="field">
+                        <label>Alamat Email</label>
+
+                        <div class="ui left icon input">
+                            <i class="envelope icon"></i>
+                            <input name="email" type="email" required>
+                        </div>
+                    </div>
+
+                    <div class="d-flex w-100 align-items-center mt-4">
+                        <div class="ui primary button submit mr-auto">
+                            <i class="unlock icon"></i>
+                            Submit
+                        </div>
+
+                        <div>
+                            <a href="{% url 'home' %}">Batalkan Tindakan</a>
+                        </div>
+                    </div> <!-- /.flex -->
+                </form>
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/message.min.css' %}">
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/js/functions.js' %}"></script>
+
+    <script type="text/javascript">
+        var homeUrl = "{% url 'home' %}";
+        var nextUrl = getUrlParameter('next');
+        var redirectUrl = (nextUrl ? nextUrl : homeUrl);
+        var loginUrl = "{% url 'login' %}";
+
+        // ...
+        // RECOVERY HANDLER
+        // ...
+        function recoveryHandler($element=null, $context) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/persons/password-request/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$context,
+                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                },
+                success: function(response) {
+                    Cookies.set('secure_hash', response.secure_hash)
+
+                    // Show confirm prompt
+                    confirmSecureCode(response);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorMessage = 'Terjadi kesalahan. Coba lagi.',
+                            notFoundError = error.responseJSON.detail;
+
+                        // Account not found
+                        if (notFoundError) errorMessage = notFoundError;
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: errorMessage
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $($element).removeClass('loading');
+                }
+            });
+        }
+
+        // ...
+        // RECOVERY FORM
+        // ...
+        $('.form-recovery').form({
+            on: 'blur',
+            inline : true,
+            fields: {
+                email: {
+                    identifier: 'email',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Tidak boleh kosong'
+                        },
+                        {
+                            type   : 'email',
+                            prompt : '{name} tidak valid'
+                        }
+                    ]
+                },
+            },
+            onSuccess: function(event, fields) {
+                // Prevent default form submit!
+                // We use REST API for handle recovery.
+                event.preventDefault();
+
+                $(event.target).addClass('loading');
+                recoveryHandler(event.target, fields);
+            }
+        });
+
+        // ...
+        // Confirm secure code
+        // ...
+        function confirmSecureCode(data) {
+            var formSetPassword = '<p>Kode otentikasi berhasil dikirim. Periksa email Anda.</p>' +
+            '<form class="ui form form-confirm text-left">' +
+                '<div class="field">' +
+                    '<label>Kode Otentikasi</label>' +
+
+                    '<div class="ui left icon input">' +
+                        '<i class="key icon"></i>' +
+                        '<input name="secure_code" type="text" required>' +
+                    '</div>' +
+                '</div>' +
+
+                '<div class="field">' +
+                    '<label for="password1">Kata Sandi</label>' +
+
+                    '<div class="ui left icon input">' +
+                        '<i class="lock alternate icon"></i>' +
+                        '<input type="password" name="password1" autocomplete="false" required />' +
+                    '</div>' +
+                '</div>' +
+
+                '<div class="field">' +
+                    '<label for="password2">Ulangi Kata Sandi</label>' +
+
+                    '<div class="ui left icon input">' +
+                        '<i class="lock alternate icon"></i>' +
+                        '<input type="password" name="password2" autocomplete="false" required />' +
+                    '</div>' +
+                '</div>' +
+
+                '<div class="d-flex w-100 align-items-center pt-2">' +
+                    '<div class="ui primary button submit mr-auto">' +
+                        '<i class="check icon"></i>' +
+                        'Submit' +
+                    '</div>' +
+
+                    '<a href="#" id="cancel">Batalkan Tindakan</a>' +
+                '</div>' +
+            '</form>' +
+
+            '<div class="ui error message text-left error-message mt-4" style="display:none">' +
+                '<div class="header">' +
+                    'Perbaiki kesalahan berikut.' +
+                '</div>' +
+
+                '<ul class="list">' +
+                    '<li>You must include both a upper and lower case letters in your password.</li>' +
+                    '<li>You need to select your home country.</li>' +
+                '</ul>' +
+            '</div>';
+
+            Swal.fire({
+                title: 'Tindakan Diperlukan',
+                text: 'data.instruction',
+                html: formSetPassword,
+                showConfirmButton: false,
+                showCancelButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                focusConfirm: false,
+                onOpen: (toast) => {
+                    initConfirmForm();
+                }
+            });
+
+            $(document).on('click', '#cancel', function(event) {
+                event.preventDefault();
+                Swal.close();
+            });
+        }
+
+        // ...
+        // FORM SET PASSWORD HANDLER
+        // ...
+        function initConfirmForm() {
+            $('.form-confirm').form({
+                on: 'blur',
+                inline : true,
+                fields: {
+                    secure_code: {
+                        identifier: 'secure_code',
+                        rules: [
+                            {
+                                type   : 'empty',
+                                prompt : 'Tidak boleh kosong'
+                            },
+                            {
+                                type   : 'regExp[/^[a-zA-Z0-9_]{6}$/]',
+                                prompt : 'Hanya huruf, angka, 6 karakter'
+                            }
+                        ]
+                    },
+                    password1: {
+                        identifier: 'password1',
+                        rules: [
+                            {
+                                type   : 'empty',
+                                prompt : 'Tidak boleh kosong'
+                            },
+                            {
+                                type   : 'minLength[6]',
+                                prompt : 'Minimal 6 karakter'
+                            }
+                        ]
+                    },
+                    password2: {
+                        identifier  : 'password2',
+                        rules: [
+                            {
+                                type   : 'empty',
+                                prompt : 'Tidak boleh kosong'
+                            },
+                            {
+                                type   : 'match[password1]',
+                                prompt : 'Kata sandi tidak sama'
+                            }
+                        ]
+                    },
+                },
+                onSuccess: function(event, fields) {
+                    // Prevent default form submit!
+                    // We use REST API for handle login.
+                    event.preventDefault();
+
+                    $(event.target).addClass('loading');
+                    confirmHandler(event.target, fields);
+                }
+            });
+        }
+
+        // ...
+        // CONFIRM HANDLER
+        // ...
+        function confirmHandler($element, $data) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/persons/password-recovery/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$data,
+                    secure_hash: Cookies.get('secure_hash'),
+                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                },
+                success: function(response) {
+                    $('.error-message').hide();
+                    Cookies.remove('secure_hash');
+
+                    Swal.fire({
+                        title: 'Sukses!',
+                        text: 'Tindakan berhasil. Mengalihkan...',
+                        icon: 'success',
+                        showCloseButton: false,
+                        showCancelButton: false,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+
+                    window.location.replace(loginUrl);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            if (Array.isArray(item)) {
+                                errorMessage.push('<li>' + item.join(' ') + '</li>');
+                            } else {
+                                errorMessage.push('<li>' + item + '</li>');
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('<li>Terjadi kesalahan. Coba lagi.</li>');
+
+                        // Show error
+                        if (errorMessage) {
+                            $('.error-message').show().find('ul').html(errorMessage.join(''));
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $($element).removeClass('loading');
+                }
+            });
+        }
+    </script>
+{% endblock %}
