@@ -4,9 +4,11 @@ from .project import *
 DEBUG = False
 ALLOWED_HOSTS = ['localhost', '::1', '127.0.0.1', 'tombol-ajaib.herokuapp.com']
 
+"""
 REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
     'rest_framework_simplejwt.authentication.JWTAuthentication'
 ]
+"""
 
 
 # Django Sessions
