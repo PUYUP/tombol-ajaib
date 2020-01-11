@@ -1,7 +1,7 @@
 from .base import *
 from .project import *
 
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = ['localhost', '::1', '127.0.0.1', 'tombol-ajaib.herokuapp.com']
 
 REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
