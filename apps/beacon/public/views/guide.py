@@ -45,7 +45,7 @@ class GuideListView(View):
                 num_revision=Count('guide_revisions'),
                 **revision_params)
 
-        self.context['title'] = _("Daftar Tutorial")
+        self.context['title'] = _("Panduan Saya")
         self.context['guides'] = guides
         self.context['STATUS_CHOICES'] = STATUS_CHOICES
         return render(request, self.template_name, self.context)
@@ -90,7 +90,7 @@ class GuideEditorView(View):
     def get(self, request):
         categories_obj = Category.objects.all()
 
-        self.context['title'] = _("Kirim Tutorial")
+        self.context['title'] = _("Kirim Panduan")
         self.context['categories'] = categories_obj
         return render(request, self.template_name, self.context)
 
