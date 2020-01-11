@@ -82,6 +82,7 @@ class GuideRevisionDetailView(View):
         return render(request, self.template_name, self.context)
 
 
+@method_decorator(login_required(login_url='login'), name='dispatch')
 class GuideEditorView(View):
     template_name = 'templates/guide/initial.html'
     context = dict()
@@ -94,6 +95,7 @@ class GuideEditorView(View):
         return render(request, self.template_name, self.context)
 
 
+@method_decorator(login_required(login_url='login'), name='dispatch')
 class GuideRevisionEditorView(View):
     template_name = 'templates/guide/editor-revision.html'
     context = dict()
