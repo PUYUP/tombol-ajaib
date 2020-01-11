@@ -233,3 +233,32 @@ class AbstractIntroduction(models.Model):
 
     def __str__(self):
         return self.description
+
+
+# 6
+class AbstractContent(models.Model):
+    creator = models.ForeignKey(
+        'person.Person', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='contents')
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    blob = models.BinaryField()
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        app_label = 'beacon'
+        verbose_name = _("Explain Content")
+        verbose_name_plural = _("Explain Contents")
+
+    def __str__(self):
+        if self.blob:
+            return '%s B' % sys.getsizeof(self.blob)
+        return super().__str__()
+
+    def save(self, *args, **kwargs):
+        # Convert blob to bytes
+        if self.blob and type(self.blob) is not bytes:
+            self.blob = bytes(self.blob, 'utf-8')
+        super().save(*args, **kwargs)

@@ -10,7 +10,7 @@ class BeaconConfig(AppConfig):
         from apps.beacon.signals import (
             guide_handler,
             guide_revision_handler,
-            section_handler,
+            explain_handler,
             revision_handler,
             revision_delete_handler)
 
@@ -25,15 +25,15 @@ class BeaconConfig(AppConfig):
             guide_revision_handler, sender=GuideRevision,
             dispatch_uid='guide_revision_signal')
 
-        # Section
-        Section = get_model('beacon', 'Section')
+        # Explain
+        Explain = get_model('beacon', 'Explain')
         post_save.connect(
-            section_handler, sender=Section, dispatch_uid='section_signal')
+            explain_handler, sender=Explain, dispatch_uid='explain_signal')
 
-        # SectionRevision
-        SectionRevision = get_model('beacon', 'SectionRevision')
+        # ExplainRevision
+        ExplainRevision = get_model('beacon', 'ExplainRevision')
         post_save.connect(
-            revision_handler, sender=SectionRevision, dispatch_uid='section_revision_signal')
+            revision_handler, sender=ExplainRevision, dispatch_uid='explain_revision_signal')
         post_delete.connect(
             revision_delete_handler,
-            sender=SectionRevision, dispatch_uid='section_revision_delete_signal')
+            sender=ExplainRevision, dispatch_uid='explain_revision_delete_signal')

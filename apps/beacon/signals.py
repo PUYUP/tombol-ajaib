@@ -55,7 +55,7 @@ def guide_revision_handler(sender, instance, created, **kwargs):
     pass
 
 
-def section_handler(sender, instance, created, **kwargs):
+def explain_handler(sender, instance, created, **kwargs):
     """
     if created and instance:
         instance.revisions.create(

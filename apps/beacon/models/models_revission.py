@@ -100,7 +100,6 @@ class AbstractChapterRevision(models.Model):
     description = models.TextField(max_length=500, blank=True)
     status = models.CharField(
         choices=STATUS_CHOICES, max_length=100, default=DRAFT)
-    step = models.IntegerField(null=True, default=1)
     changelog = models.TextField(max_length=1000, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -130,21 +129,21 @@ class AbstractChapterRevision(models.Model):
 
 
 # 2
-class AbstractSectionRevision(models.Model):
-    """Each Section maybe has hundred revisions
+class AbstractExplainRevision(models.Model):
+    """Each Explain maybe has hundred revisions
     But for displayed to reader use the last with published status"""
     creator = models.ForeignKey(
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
-        related_name='section_revisions')
-    section = models.ForeignKey(
-        'beacon.Section',
+        related_name='explain_revisions')
+    explain = models.ForeignKey(
+        'beacon.Explain',
         on_delete=models.CASCADE,
-        related_name='section_revisions')
+        related_name='explain_revisions')
     content = models.OneToOneField(
         'beacon.Content',
         on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='section_revisions')
+        related_name='explain_revisions')
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     version = models.IntegerField(editable=False, null=True, default=0)
@@ -152,7 +151,6 @@ class AbstractSectionRevision(models.Model):
     slug = models.SlugField(editable=False, max_length=500)
     status = models.CharField(
         choices=STATUS_CHOICES, max_length=100, default=DRAFT)
-    step = models.IntegerField(null=True, default=1)
     changelog = models.TextField(max_length=1000, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
@@ -165,8 +163,8 @@ class AbstractSectionRevision(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
-        verbose_name = _("Section Revision")
-        verbose_name_plural = _("Section Revisions")
+        verbose_name = _("Explain Revision")
+        verbose_name_plural = _("Explain Revisions")
 
     def __str__(self):
         return self.label

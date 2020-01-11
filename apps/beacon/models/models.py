@@ -1,6 +1,5 @@
 from .models_general import *
 from .models_abstract import *
-from .models_section import *
 from .models_revission import *
 
 # PROJECT UTILS
@@ -81,19 +80,19 @@ if not is_model_registered('beacon', 'Chapter'):
 
 
 # 8
-if not is_model_registered('beacon', 'Section'):
-    class Section(AbstractSection):
-        class Meta(AbstractSection.Meta):
-            db_table = 'guides_section'
+if not is_model_registered('beacon', 'Explain'):
+    class Explain(AbstractExplain):
+        class Meta(AbstractExplain.Meta):
+            db_table = 'guides_explain'
 
-    __all__.append('Section')
+    __all__.append('Explain')
 
 
 # 9
 if not is_model_registered('beacon', 'Content'):
     class Content(AbstractContent):
         class Meta(AbstractContent.Meta):
-            db_table = 'guides_section_content'
+            db_table = 'guides_explain_content'
 
     __all__.append('Content')
 
@@ -108,12 +107,12 @@ if not is_model_registered('beacon', 'GuideRevision'):
 
 
 # 12
-if not is_model_registered('beacon', 'SectionRevision'):
-    class SectionRevision(AbstractSectionRevision):
-        class Meta(AbstractSectionRevision.Meta):
-            db_table = 'guides_section_revision'
+if not is_model_registered('beacon', 'ExplainRevision'):
+    class ExplainRevision(AbstractExplainRevision):
+        class Meta(AbstractExplainRevision.Meta):
+            db_table = 'guides_explain_revision'
 
-    __all__.append('SectionRevision')
+    __all__.append('ExplainRevision')
 
 
 # 13
