@@ -92,7 +92,7 @@
             if (field_type === 'richtext') {
                 return '<div class="field">' +
                     '<label>' + label + '</label>' +
-                    '<textarea name="' + identifier + '" ' + (is_required ? 'required' : '') + ' placeholder="' + placeholder + '">' + value + '</textarea>';
+                    '<textarea name="' + identifier + '" ' + (is_required ? 'required' : '') + ' placeholder="' + placeholder + '" rows="3">' + value + '</textarea>' +
                 '</div>';
             }
         }
@@ -112,6 +112,7 @@
                 // TEXT FIELD
                 if (value.field_type === 'text' || value.field_type === 'richtext') htmlItem = textElement(value);
 
+                console.log(htmlItem);
                 if (htmlItem) attributeItems.push(htmlItem);
             });
 
