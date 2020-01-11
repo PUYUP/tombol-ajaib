@@ -14,7 +14,6 @@ PROJECT_APPS = [
     'apps.person.apps.PersonConfig',
     'apps.beacon.apps.BeaconConfig',
 ]
-
 INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 
 
@@ -23,7 +22,6 @@ PROJECT_MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
-
 MIDDLEWARE = MIDDLEWARE + PROJECT_MIDDLEWARE
 
 
