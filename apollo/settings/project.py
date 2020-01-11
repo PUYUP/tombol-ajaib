@@ -21,6 +21,7 @@ INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 # Application middleware
 PROJECT_MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 MIDDLEWARE = MIDDLEWARE + PROJECT_MIDDLEWARE
