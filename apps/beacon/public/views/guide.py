@@ -1,5 +1,5 @@
 from django.views import View
-from django.db.models import Count, OuterRef, Subquery, Case, When, Q, F
+from django.db.models import Count, OuterRef, Subquery, Case, When
 from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import render, redirect, reverse
 from django.contrib.auth.decorators import login_required

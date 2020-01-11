@@ -18,7 +18,7 @@
                     <div class="d-flex w-100">
                         <span class="mr-auto">
                             <span class="d-block w-100 font-weight-bold"><i class="icon asterisk"></i> Sorotan</span>
-                            {% if not introductions.exists %}Tidak ada sorotan.{% endif %}
+                            {% if not introductions.exists %}Tidak ada sorotan{% endif %}
                         </span>
 
                         {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
@@ -47,6 +47,11 @@
                         </div>
                     {% endif %}
                 </div>
+
+                <p>
+                    <span class="d-block w-100 font-weight-bold"><i class="icon user"></i> Pemateri</span>
+                    <span class="text-capitalize">{{ revision.creator.user.username }}</span>
+                </p>
 
                 <p>
                     <span class="d-block w-100 font-weight-bold"><i class="icon clock outline"></i> Pembaruan</span>
