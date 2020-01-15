@@ -1,4 +1,5 @@
 import uuid
+import sys
 
 from django.db import models
 from django.db.models import Q
@@ -249,8 +250,8 @@ class AbstractContent(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
-        verbose_name = _("Explain Content")
-        verbose_name_plural = _("Explain Contents")
+        verbose_name = _("Content")
+        verbose_name_plural = _("Contents")
 
     def __str__(self):
         if self.blob:

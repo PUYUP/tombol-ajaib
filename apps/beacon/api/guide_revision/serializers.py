@@ -144,7 +144,7 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # only revision with status is DRAFT allow to update
         if instance.status != DRAFT:
-            raise NotAcceptable(detail=_("Tindakan ditolak."))
+            raise NotAcceptable(detail=_("Revisi sudah terpublikasi. Tindakan ditolak."))
 
         # include all field for update
         for item in validated_data:

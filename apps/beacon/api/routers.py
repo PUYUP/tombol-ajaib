@@ -6,12 +6,20 @@ from rest_framework.routers import DefaultRouter
 from .guide.views import GuideApiView
 from .guide_revision.views import GuideRevisionApiView
 from .introduction.views import IntroductionApiView
+from .chapter.views import ChapterApiView
+from .chapter_revision.views import ChapterRevisionApiView
+from .explain.views import ExplainApiView
+from .explain_revision.views import ExplainRevisionApiView
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
 router.register('guides', GuideApiView, basename='guide')
 router.register('guides-revisions', GuideRevisionApiView, basename='guide_revision')
 router.register('introductions', IntroductionApiView, basename='introduction')
+router.register('chapters', ChapterApiView, basename='chapter')
+router.register('chapters-revisions', ChapterRevisionApiView, basename='chapter_revision')
+router.register('explains', ExplainApiView, basename='explain')
+router.register('explains-revisions', ExplainRevisionApiView, basename='explain_revision')
 
 app_name = 'beacon'
 

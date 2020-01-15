@@ -6,7 +6,7 @@ from django.views.decorators.cache import never_cache
 from django.contrib.contenttypes.models import ContentType
 
 # DRF
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status as response_status, viewsets
 from rest_framework.decorators import action
@@ -31,8 +31,8 @@ class GuideApiView(viewsets.ViewSet):
     permission_classes = (AllowAny,)
     permission_action = {
         # Disable update if not owner
-        'create': [IsAllowCrudObject],
-        'destroy': [IsAllowCrudObject],
+        'create': [IsAuthenticated, IsAllowCrudObject],
+        'destroy': [IsAuthenticated, IsAllowCrudObject],
     }
 
     def get_permissions(self):
@@ -67,8 +67,10 @@ class GuideApiView(viewsets.ViewSet):
         uuid = check_uuid(uid=uuid)
         if not uuid:
             raise NotFound()
+        
+        person = getattr(request.user, 'person', None)
+        queryset = Guide.objects.filter(uuid=uuid, creator=person)
 
-        queryset = Guide.objects.filter(uuid=uuid)
         if queryset.exists():
             queryset.delete()
 

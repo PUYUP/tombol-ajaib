@@ -47,3 +47,11 @@ h1 { font-size: 22px; }
 .embed-responsive-1by1::before {
     padding-top: 100%;
 }
+
+.accordion-menu .title {
+    border-top: 0 !important;
+}
+
+.accordion-menu .item + .item .title {
+    border-top: 1px solid rgba(34,36,38,.15) !important;
+}

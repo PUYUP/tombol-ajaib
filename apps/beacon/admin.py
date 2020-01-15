@@ -47,7 +47,7 @@ class GuideRevisionAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class GuideIntroductionAdmin(admin.ModelAdmin):
+class IntroductionAdmin(admin.ModelAdmin):
     """Extend media admin"""
     model = Introduction
     readonly_fields = ('uuid',)
@@ -70,6 +70,84 @@ class GuideIntroductionAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class ChapterRevisionAdmin(admin.ModelAdmin):
+    """Extend media admin"""
+    model = ChapterRevision
+    readonly_fields = ('version', 'uuid',)
+    list_display = ('label', 'status', 'version', 'date_created', 'date_updated',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'creator':
+            kwargs['queryset'] = Person.objects.prefetch_related('user') \
+                .select_related('user')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('creator', 'creator__user', 'chapter') \
+            .select_related('creator', 'creator__user', 'chapter')
+
+    def save_model(self, request, obj, form, change):
+        # Append request to signals
+        setattr(obj, 'request', request)
+        super().save_model(request, obj, form, change)
+
+
+class ChapterAdmin(admin.ModelAdmin):
+    """Extend media admin"""
+    model = Chapter
+    readonly_fields = ('uuid',)
+    list_display = ('label', 'date_created', 'date_updated',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'creator':
+            kwargs['queryset'] = Person.objects.prefetch_related('user') \
+                .select_related('user')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('creator', 'creator__user', 'guide') \
+            .select_related('creator', 'creator__user', 'guide')
+
+    def save_model(self, request, obj, form, change):
+        # Append request to signals
+        setattr(obj, 'request', request)
+        super().save_model(request, obj, form, change)
+
+
+class ExplainAdmin(admin.ModelAdmin):
+    """Extend media admin"""
+    model = Explain
+    readonly_fields = ('uuid',)
+    list_display = ('label', 'date_created', 'date_updated',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'creator':
+            kwargs['queryset'] = Person.objects.prefetch_related('user') \
+                .select_related('user')
+
+        if db_field.name == 'guide':
+            kwargs['queryset'] = Guide.objects.prefetch_related('creator', 'creator__user') \
+                .select_related('creator', 'creator__user')
+
+        if db_field.name == 'chapter':
+            kwargs['queryset'] = Chapter.objects.prefetch_related('creator', 'creator__user') \
+                .select_related('creator', 'creator__user')
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('creator', 'creator__user', 'guide', 'chapter') \
+            .select_related('creator', 'creator__user', 'guide', 'chapter')
+
+    def save_model(self, request, obj, form, change):
+        # Append request to signals
+        setattr(obj, 'request', request)
+        super().save_model(request, obj, form, change)
+
+
 # ...
 # REGISTER MODEL
 # ...
@@ -78,11 +156,11 @@ admin.site.register(Vote)
 admin.site.register(Rating)
 admin.site.register(Category)
 admin.site.register(Attachment)
-admin.site.register(Introduction, GuideIntroductionAdmin)
+admin.site.register(Introduction, IntroductionAdmin)
 admin.site.register(Guide)
-admin.site.register(Chapter)
-admin.site.register(Explain)
+admin.site.register(Chapter, ChapterAdmin)
+admin.site.register(Explain, ExplainAdmin)
 admin.site.register(Content)
 admin.site.register(GuideRevision, GuideRevisionAdmin)
-admin.site.register(ChapterRevision)
+admin.site.register(ChapterRevision, ChapterRevisionAdmin)
 admin.site.register(ExplainRevision)

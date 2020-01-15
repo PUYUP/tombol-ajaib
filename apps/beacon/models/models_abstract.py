@@ -88,6 +88,11 @@ class AbstractExplain(models.Model):
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
         related_name='explains')
+    guide = models.ForeignKey(
+        'beacon.Guide',
+        on_delete=models.CASCADE,
+        related_name='explains',
+        null=True, blank=True)
     chapter = models.ForeignKey(
         'beacon.Chapter',
         on_delete=models.CASCADE,
@@ -111,6 +116,12 @@ class AbstractExplain(models.Model):
 
     def __str__(self):
         return self.label
+
+    def save(self, *args, **kwargs):
+        guide_from_chapter = self.chapter.guide
+        self.guide = guide_from_chapter
+
+        super().save(*args, **kwargs)
 
     def get_latest_revision(self):
         revision = self.revisions.filter(status=PUBLISHED) \

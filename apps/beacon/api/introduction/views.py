@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 
 # DRF
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status as response_status, viewsets
 from rest_framework.decorators import action
@@ -32,8 +32,8 @@ class IntroductionApiView(viewsets.ViewSet):
     permission_classes = (AllowAny,)
     permission_action = {
         # Disable update if not owner
-        'create': [IsAllowCrudObject],
-        'destroy': [IsAllowCrudObject],
+        'create': [IsAuthenticated, IsAllowCrudObject],
+        'destroy': [IsAuthenticated, IsAllowCrudObject],
     }
 
     def get_permissions(self):

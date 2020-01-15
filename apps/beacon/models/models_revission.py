@@ -33,7 +33,7 @@ class AbstractGuideRevision(models.Model):
     version = models.IntegerField(editable=False, null=True, default=0)
     label = models.CharField(max_length=255)
     slug = models.SlugField(editable=False, max_length=500)
-    description = models.TextField(max_length=500, blank=True)
+    description = models.TextField(max_length=500, blank=True, null=True)
     status = models.CharField(
         choices=STATUS_CHOICES, max_length=100, default=DRAFT)
     changelog = models.TextField(max_length=1000, null=True)
@@ -97,7 +97,7 @@ class AbstractChapterRevision(models.Model):
     version = models.IntegerField(editable=False, null=True, default=0)
     label = models.CharField(max_length=255)
     slug = models.SlugField(editable=False, max_length=500)
-    description = models.TextField(max_length=500, blank=True)
+    description = models.TextField(max_length=500, blank=True, null=True)
     status = models.CharField(
         choices=STATUS_CHOICES, max_length=100, default=DRAFT)
     changelog = models.TextField(max_length=1000, null=True)
@@ -117,13 +117,27 @@ class AbstractChapterRevision(models.Model):
         return self.label
 
     def save(self, *args, **kwargs):
+        model = self._meta.model
+
+        revisions = model.objects \
+            .filter(
+                creator=self.creator, chapter=self.chapter) \
+            .exclude(pk=self.pk) \
+            .order_by('-version') \
+
+        if revisions.exists():
+            # make other revisions status to Arcive
+            if self.status == PUBLISHED:
+                revisions.update(status=ARCHIVE)
+
+            # increase version
+            if not self.pk:
+                revisions_last = revisions.first()
+                self.version = revisions_last.version + 1
+
         # Auto create slug from label
         if self.label:
             self.slug = slugify(self.label)
-
-        # Increase version if published
-        if self.status == 'published':
-            self.version = F('version') + 1
 
         super().save(*args, **kwargs)
 
@@ -170,12 +184,26 @@ class AbstractExplainRevision(models.Model):
         return self.label
 
     def save(self, *args, **kwargs):
+        model = self._meta.model
+
+        revisions = model.objects \
+            .filter(
+                creator=self.creator, explain=self.explain) \
+            .exclude(pk=self.pk) \
+            .order_by('-version') \
+
+        if revisions.exists():
+            # make other revisions status to Arcive
+            if self.status == PUBLISHED:
+                revisions.update(status=ARCHIVE)
+
+            # increase version
+            if not self.pk:
+                revisions_last = revisions.first()
+                self.version = revisions_last.version + 1
+
         # Auto create slug from label
         if self.label:
             self.slug = slugify(self.label)
-
-        # Increase version if published
-        if self.status == 'published':
-            self.version = F('version') + 1
 
         super().save(*args, **kwargs)
