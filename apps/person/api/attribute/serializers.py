@@ -46,7 +46,7 @@ class AttributeSerializer(serializers.ModelSerializer):
         if option_group:
             request = self.context['request']
             field_type = obj.field_type
-            person = getattr(request.user, 'person', None)
+            person = request.person
 
             selected_option = AttributeValue.objects.filter(
                 object_id=person.pk,
@@ -63,7 +63,7 @@ class AttributeSerializer(serializers.ModelSerializer):
     def get_value(self, obj):
         field_type = obj.field_type
         request = self.context['request']
-        person = getattr(request.user, 'person', None)
+        person = request.person
         value_field = 'value_%s' % field_type
         value = getattr(obj, value_field, None)
         value_print = getattr(obj, 'label', None)
@@ -126,7 +126,7 @@ class AttributeSerializer(serializers.ModelSerializer):
 
         identifier = instance.identifier
         value = request.data.get('value', None)
-        person = getattr(request.user, 'person', None)
+        person = request.person
         content_type = ContentType.objects.get_for_model(person)
 
         if person:

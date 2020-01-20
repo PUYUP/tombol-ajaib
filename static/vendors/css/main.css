@@ -2,8 +2,12 @@ h1 { font-size: 22px; }
 
 .navbar {
     padding: 10px 0;
-    margin-bottom: 35px;
     background-color: #f7f7f7;
+}
+
+.main-content {
+    padding-top: 35px;
+    padding-bottom: 25px;
 }
 
 /* ...
@@ -54,4 +58,34 @@ h1 { font-size: 22px; }
 
 .accordion-menu .item + .item .title {
     border-top: 1px solid rgba(34,36,38,.15) !important;
+}
+
+/***
+ * Chapter...
+ */
+.chapter-list > .list > .item + .item {
+    border-top: 1px solid rgba(34,36,38,.15) !important;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.chapter-list .ui.list .list>.item .header,
+.chapter-list .ui.list>.item .header {
+    font-weight: normal !important;
+}
+
+.chapter-list .ui.list .list>.item.active > .content > .header,
+.chapter-list .ui.list>.item.active > .content > .header {
+    font-weight: 700 !important;
+}
+
+.chapter-list > .list > .item .content > .list > .item + .item {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+@media only screen and (max-width: 991px) and (min-width: 768px) {
+    .ui.container {
+        width: 100% !important;
+    }
 }

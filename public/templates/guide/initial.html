@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container ui">
+    <div class="container ui main-content">
         <div class="row justify-content-center">
             <div class="col-12 col-sm-12 col-md-10 col-lg-7 col-xl-5">
                 <h1 class="mb-3">Buat Panduan</h1>
@@ -96,7 +96,7 @@
                     csrfmiddlewaretoken: Cookies.get('csrftoken'),
                 },
                 success: function(response) {
-                    window.location.replace(response.url);
+                    window.location.replace(response.permalink);
                 },
                 error: function(error) {
                     $($element).removeClass('loading');

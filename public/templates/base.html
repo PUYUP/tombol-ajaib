@@ -29,7 +29,9 @@
             {% include "templates/navbar.html" %}
         </header>
 
-        <main class="pb-4">
+        {% block content_fluid %}{% endblock %}
+
+        <main>
             {% block content %}{% endblock %}
         </main>
 

@@ -1,0 +1,60 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+{% load sidenav %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="ui container main-content">
+        <div class="row">
+            <div class="col-12 col-sm-12 col-md-4">
+                <div class="chapter-list">
+                    {% explain_sidenav request explain revision %}
+                </div>
+            </div> <!-- /.col -->
+
+            <div class="col-12 col-sm-12 col-md-8">
+                <h1 class="mt-0 mb-0">{{ revision.label }}</h1>
+                
+                <div class="ui horizontal bulleted list small text-muted">
+                    <div class="item">
+                        ref. {{ revision.version }}
+                    </div>
+
+                    <div class="item">
+                        {{ revision.date_created }}
+                    </div>
+
+                    <div class="item">
+                        <a id="update-explain" data-explain-uuid="{{ revision.explain.uuid }}" data-revision-uuid="{{ revision.uuid }}">
+                            perbarui
+                        </a>
+                    </div>
+                </div>
+
+                <article>
+                    {{ content | safe }}
+                </article>
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/sidebar.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/sidebar.min.js' %}"></script>
+
+    <script type="text/javascript">
+       $('.ui.sidebar').sidebar();
+    </script>
+
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <script type="text/javascript" src="{% static 'vendors/js/explain.js' %}"></script>
+    {% endif %}
+{% endblock %}

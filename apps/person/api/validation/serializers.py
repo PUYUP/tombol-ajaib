@@ -38,7 +38,7 @@ class ValidationSerializer(serializers.ModelSerializer):
     def get_value(self, obj):
         attr_type = obj.field_type
         request = self.context['request']
-        person = getattr(request.user, 'person', None)
+        person = request.person
         name = 'value_%s' % attr_type
         value = getattr(obj, name, None)
         value_print = getattr(obj, 'label', None)
@@ -100,7 +100,7 @@ class ValidationSerializer(serializers.ModelSerializer):
         value = request.data.get('value', None)
         secure_code = request.data.get('secure_code', None)
         secure_hash = request.data.get('secure_hash', None)
-        person = getattr(request.user, 'person', None)
+        person = request.person
         content_type = ContentType.objects.get_for_model(person)
 
         if person:

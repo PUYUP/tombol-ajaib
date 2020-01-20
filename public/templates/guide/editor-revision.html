@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container ui">
+    <div class="container ui main-content">
         <div class="row justify-content-center">
             <div class="col-12 col-sm-12 col-md-12 col-lg-8 col-xl-8">
                 <h1 class="mb-3">
@@ -16,7 +16,7 @@
                 
                 {% if revision.status == 'draft' %}
 
-                    <form class="ui form mb-4 pb-4">
+                    <form class="ui form mb-4 pb-4" data-uuid="{{ revision.uuid }}">
                         <div class="field">
                             <label>Nama Panduan</label>
 
@@ -62,7 +62,7 @@
 
                         <div class="ui error message"></div>
 
-                        <div class="ui primary button submit mr-auto">
+                        <div class="ui primary button submit mr-auto" data-uuid="{{ revision.uuid }}">
                             <i class="check icon"></i>
                             Submit
                         </div>
@@ -78,7 +78,7 @@
                                 Tindakan ditolak
                             </div>
 
-                            <p>Untuk memperbarui konten silahkan kunjungi <a  href="{% url 'guide_revision_detail' revision_published.uuid %}">laman ini</a> dan klik "Perbarui".</p>
+                            <p>Konten yang telah ter-publikasi tidak dapat diperbarui.</p>
                         </div>
                     </div>
                 
@@ -100,68 +100,19 @@
 {% block js %}
     <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/api.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/js/jquery.serialize-object.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
     
     <script type="text/javascript">
         $('.checkbox').checkbox();
 
-        // ...
-        // SUBMIT HANDLER
-        // ...
-        function submitHandler($element=null, $fields) {
-            var status = $fields.status,
-                method = status === 'published' ? 'POST' : 'PATCH',
-                urlParam = status === 'published' ? '' : '{{ revision.uuid }}/';
-
-            $.ajax({
-                method: 'PATCH',
-                url: '/api/beacon/guides-revisions/{{ revision.uuid }}/',
-                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                xhrFields: {withCredentials: true},
-                data: {
-                    ...$fields,
-                    guide: "{{ revision.guide.pk }}",
-                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
-                },
-                success: function(response) {
-                    if (response.status === 'published') window.location.replace(response.url);
-                },
-                error: function(error) {
-                    if (error && error.responseJSON) {
-                        var errorJSON = error.responseJSON,
-                            errorMessage = [];
-
-                        $.each(errorJSON, function(index, item) {
-                            var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-                            
-                            if (Array.isArray(item)) {
-                                errorMessage.push(label + item.join(' '));
-                            } else {
-                                errorMessage.push(label + item);
-                            }
-                        });
-
-                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
-
-                        // Show error
-                        if (errorMessage) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Oops...',
-                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
-                            });
-                        }
-                    }
-                },
-                complete: function(xhr, status) {
-                    var status = xhr.responseJSON.status;
-                    if (status !== 'published') $($element).removeClass('loading');
-                }
-            });
-        }
+        $.fn.api.settings.api = {
+            'guides revisions'  : '/api/beacon/guides-revisions/{uuid}/',
+        };
 
         // ...
-        // FORM VALIDATION
+        // FORM HANDLER
         // ...
         $('.form').form({
             on: 'blur',
@@ -210,25 +161,53 @@
                         }
                     ]
                 },
+            }
+        })
+        .api({
+            method: 'PATCH',
+            action: 'guides revisions',
+            serializeForm: true,
+            beforeXHR: function(xhr) {
+                xhr.setRequestHeader ('X-CSRFToken', Cookies.get('csrftoken'));
+                return xhr;
             },
-            onSuccess: function(event, fields) {
-                // Prevent default form submit!
-                // We use REST API for handle login.
-                if (event) {
-                    event.preventDefault();
+            onSuccess: function(response) {
+                if (response.status === 'published') {
+                    window.location.replace(response.permalink);
+                } else {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Pembaruan berjalan sukses!',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+                }
+            },
+            onFailure: function(response) {
+                var errorMessage = [];
 
-                    $(event.target).addClass('loading');
-                    submitHandler(event.target, fields);
+                $.each(response, function(index, item) {
+                    var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                    
+                    if (Array.isArray(item)) {
+                        errorMessage.push(label + item.join(' '));
+                    } else {
+                        errorMessage.push(label + item);
+                    }
+                });
+
+                if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                // Show error
+                if (errorMessage) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                    });
                 }
             }
-        });
-
-        $(document).on('change', '[name="category"]', function(event) {
-            $('.form').form('validate form');
-        });
-
-        $(document).on('keyup', '[name="label"]', function(event) {
-            $('.form').form('validate form');
         });
     </script>
 {% endblock %}

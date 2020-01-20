@@ -1,0 +1,230 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container main-content ui">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-12 col-md-12 col-lg-10 col-xl-9">
+                <h1 class="mb-3">
+                    <span class="text-muted border-bottom font-weight-light">Rev. {{ revision.version }}: </span>
+                    {{ revision.label }}
+                </h1>
+                
+                {% if revision.status == 'draft' %}
+
+                    <form class="ui form mb-4 pb-4">
+                        <div class="field">
+                            <label>Nama Panduan</label>
+
+                            <div class="ui left icon input">
+                                <i class="book icon"></i>
+                                <input name="label" type="text" value="{{ revision.label }}" required>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>Konten</label>
+
+                            <div class="ui input">
+                                <textarea name="content_blob" required>{{ content }}</textarea>
+                            </div>
+                        </div>
+
+                        {% if revision.status != 'published' and revision.status != 'archive' %}
+                            <div class="grouped fields">
+                                <label>Status</label>
+
+                                <div class="row m-0">
+                                    {% for item in status_choice %}
+                                        <div class="field col-12 col-sm-6">
+                                            <div class="ui radio checkbox">
+                                                <input type="radio" name="status" value="{{ item.0 }}" required
+                                                {% if revision.status == item.0 %}checked{% endif %}>
+                                                <label>{{ item.1 }}</label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div class="field">
+                            <label>Changelog</label>
+
+                            <div class="ui input">
+                                <textarea name="changelog" rows="3" required>{% if revision.changelog %}{{ revision.changelog }}{% endif %}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="ui error message"></div>
+
+                        <div class="ui primary button submit mr-auto">
+                            <i class="check icon"></i>
+                            Submit
+                        </div>
+                    </form>
+
+                {% else %}
+
+                    <div class="ui icon message warning">
+                        <i class="exclamation triangle icon"></i>
+
+                        <div class="content">
+                            <div class="header">
+                                Tindakan ditolak
+                            </div>
+
+                            <p>Konten yang telah ter-publikasi tidak dapat diperbarui.</p>
+                        </div>
+                    </div>
+                
+                {% endif %}
+            </div>
+        </div>
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/loader.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/checkbox.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/message.min.css' %}">
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+    
+    <script type="text/javascript">
+        $('.checkbox').checkbox();
+
+        // ...
+        // SUBMIT HANDLER
+        // ...
+        function submitHandler($element=null, $fields) {
+            $.ajax({
+                method: 'PATCH',
+                url: '/api/beacon/explains-revisions/{{ revision.uuid }}/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$fields,
+                    guide: "{{ revision.guide.pk }}",
+                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                },
+                success: function(response) {
+                    if (response.status === 'published') window.location.replace(response.permalink);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                            
+                            if (Array.isArray(item)) {
+                                errorMessage.push(label + item.join(' '));
+                            } else {
+                                errorMessage.push(label + item);
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    var status = xhr.responseJSON.status;
+                    if (status !== 'published') $($element).removeClass('loading');
+                }
+            });
+        }
+
+        // ...
+        // FORM VALIDATION
+        // ...
+        $('.form').form({
+            on: 'blur',
+            inline: true,
+            fields: {
+                label: {
+                    identifier: 'label',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Nama panduan tidak boleh kosong'
+                        },
+                        {
+                            type   : 'minLength[4]',
+                            prompt : 'Nama panduan minimal 4 karakter'
+                        }
+                    ]
+                },
+                content: {
+                    identifier: 'content',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Keterangan tidak boleh kosong'
+                        },
+                        {
+                            type   : 'minLength[25]',
+                            prompt : 'Keterangan minimal 25 karakter'
+                        }
+                    ]
+                },
+                status: {
+                    identifier: 'status',
+                    rules: [
+                        {
+                            type   : 'checked',
+                        }
+                    ]
+                },
+                changelog: {
+                    identifier: 'changelog',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Changelog tidak boleh kosong'
+                        }
+                    ]
+                },
+            },
+            onSuccess: function(event, fields) {
+                // Prevent default form submit!
+                // We use REST API for handle login.
+                if (event) {
+                    event.preventDefault();
+
+                    $(event.target).addClass('loading');
+                    submitHandler(event.target, fields);
+                }
+            }
+        });
+
+        $(document).on('change', '[name="category"]', function(event) {
+            $('.form').form('validate form');
+        });
+
+        $(document).on('keyup', '[name="label"]', function(event) {
+            $('.form').form('validate form');
+        });
+    </script>
+{% endblock %}

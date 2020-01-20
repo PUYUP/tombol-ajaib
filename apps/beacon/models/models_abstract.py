@@ -32,6 +32,7 @@ class AbstractGuide(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
+        ordering = ['date_created']
         verbose_name = _("Guide")
         verbose_name_plural = _("Guides")
 

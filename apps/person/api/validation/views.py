@@ -61,7 +61,7 @@ class ValidationApiView(viewsets.ViewSet):
 
         # Validations
         if hasattr(request.user, 'person') and identifiers:
-            person = getattr(request.user, 'person', None)
+            person = request.person
             identifiers = identifiers.split(',')
 
             # ContentType berdasarkan content (model)

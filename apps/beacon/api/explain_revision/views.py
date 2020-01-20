@@ -95,7 +95,7 @@ class ExplainRevisionApiView(viewsets.ViewSet):
         if not uuid:
             raise NotFound()
         
-        person = getattr(request.user, 'person', None)
+        person = request.person
         queryset = ExplainRevision.objects.filter(uuid=uuid, creator=person)
 
         if queryset.exists():

@@ -1,0 +1,104 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+{% load guide_tab %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container ui main-content">
+        {% guide_tab request guide_revision_uuid identifier %}
+
+        {% if revision_obj.status == 'draft' %}
+
+            <form class="ui form mb-4 pb-4" data-uuid="{{ revision_obj.uuid }}">
+                <div class="field">
+                    <label>Nama Panduan</label>
+
+                    <div class="ui left icon input">
+                        <i class="book icon"></i>
+                        <input name="label" type="text" value="{{ revision_obj.label }}" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Keterangan</label>
+
+                    <div class="ui input">
+                        <textarea name="description" required>{{ revision_obj.description }}</textarea>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Changelog</label>
+
+                    <div class="ui input">
+                        <textarea name="changelog" rows="3" required>{% if revision_obj.changelog %}{{ revision_obj.changelog }}{% endif %}</textarea>
+                    </div>
+                </div>
+
+                <div class="ui error message"></div>
+
+                <div class="ui primary button submit mr-auto" data-uuid="{{ revision_obj.uuid }}">
+                    <i class="check icon"></i>
+                    Submit
+                </div>
+            </form>
+
+        {% else %}
+
+            <div class="ui icon message warning">
+                <i class="exclamation triangle icon"></i>
+
+                <div class="content">
+                    <div class="header">
+                        Tindakan ditolak
+                    </div>
+
+                    <p>Konten yang telah ter-publikasi tidak dapat diperbarui.</p>
+                </div>
+            </div>
+        
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/checkbox.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/loader.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/modal.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/dimmer.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/transition.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/tab.min.css' %}">
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/modal.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/dimmer.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/transition.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/api.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/tab.min.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/jquery-ui/jquery-ui.min.js' %}"></script>
+
+    <script type="text/javascript">
+        $('.dynamic.example .menu .item')
+        .tab({
+            apiSettings: {
+                url: '{tab}/'
+            },
+            evaluateScripts : 'once',
+            context : 'parent',
+            auto : false,
+            path: '/'
+        });
+    </script>
+{% endblock %}

@@ -57,7 +57,7 @@ class AttributeApiView(viewsets.ViewSet):
 
         # Attributes
         if hasattr(request.user, 'person') and identifiers:
-            person = getattr(request.user, 'person', None)
+            person = request.person
             identifiers = identifiers.split(',')
 
             # ContentType berdasarkan content (model)
@@ -127,7 +127,7 @@ class AttributeApiView(viewsets.ViewSet):
             permission_classes=[IsAuthenticated],
             url_path='update', url_name='update_attributes')
     def update_attributes(self, request):
-        person = getattr(request.user, 'person', None)
+        person = request.person
         content_type = ContentType.objects.get_for_model(person)
         param_keys = [key for key in request.data if key]
         context = {'request': self.request}

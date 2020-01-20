@@ -56,7 +56,7 @@ def check_validation_passed(self, *agrs, **kwargs):
     if not request:
         return False
 
-    person = getattr(request.user, 'person', None)
+    person = request.person
     if not person:
         return False
 

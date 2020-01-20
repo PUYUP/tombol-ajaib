@@ -6,9 +6,9 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container ui">
+    <div class="container ui main-content">
         <div class="row justify-content-center">
-            <div class="col-12 col-sm-12 col-md-10 col-lg-8 col-xl-7">
+            <div class="col-12 col-sm-12 col-md-10 col-lg-9 col-xl-8">
                 <h1 class="mb-3">
                     <span class="text-muted border-bottom font-weight-light">Rev. {{ revision.version }}: </span>
                     {{ revision.label }}
@@ -55,7 +55,22 @@
 
                 <p>
                     <span class="d-block w-100 font-weight-bold"><i class="icon clock outline"></i> Pembaruan</span>
-                    {{ revision.date_updated }}
+        
+                    {% if revision.explain_date_created and revision.chapter_date_created %}
+                        {% if revision.explain_date_created >= revision.chapter_date_created %}
+                            <a href="{% url 'explain_revision_detail' revision.explain_uuid %}">
+                                {{ revision.explain_date_created }}
+                                <i class="icon caret right"></i>
+                            </a>
+                        {% else %}
+                            <a href="{% url 'chapter_revision_detail' revision.chapter_uuid %}">
+                                {{ revision.chapter_date_created }}
+                                <i class="icon caret right"></i>
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        {{ revision.date_updated }}
+                    {% endif %}
                 </p>
 
                 {% if revision.creator == user.person %}
@@ -100,12 +115,26 @@
                             <div id="item_{{ item.pk }}" class="item" data-uuid="{{ item.uuid }}">
                                 <div class="title">
                                     <div class="d-flex fluid">
-                                        <i class="dropdown icon control" style="width:15px; margin-top:1px"></i>
+                                        <i class="dropdown icon control" style="width:15px; margin-top:1.5px"></i>
 
                                         <div class="text-left d-flex w-100">
-                                            <span class="control w-100">{{ item.chapter_label }}</span>
+                                            <span class="w-100">
+                                                <span class="control">{{ item.chapter_label }}</span>
+                            
+                                                <span class="text-muted font-weight-normal">
+                                                    {% if item.creator.pk == user.person.pk %}
+                                                        {% if item.num_explain %} - {{ item.num_explain }} bab{% endif %}
+                                                    {% else %}
+                                                        {% if item.num_explain_published %} - {{ item.num_explain_published }} bab{% endif %}
+                                                    {% endif %}
+                                                </span>
 
-                                            <div class="ml-auto text-right" style="width:155px">
+                                                <a href="{% url 'chapter_revision_detail' item.chapter_uuid %}">
+                                                    <i class="linkify icon small text-muted"></i>
+                                                </a>
+                                            </span>
+
+                                            <div class="ml-auto text-right" style="width:175px">
                                                 <div class="d-table w-100 justify-content-around">
                                                     <small class="d-table-cell text-muted font-weight-normal">
                                                         ref. {{ item.chapter_version }}
@@ -127,6 +156,10 @@
                                                         <a id="update-chapter" class="d-table-cell ml-2" data-chapter-uuid="{{ item.uuid }}" data-revision-uuid="{{ item.chapter_uuid }}">
                                                             <i class="edit icon mr-0"></i>
                                                         </a>
+
+                                                        <span class="d-table-cell chapter-move">
+                                                            <i class="expand arrows alternate icon"></i>
+                                                        </span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -135,10 +168,6 @@
                                 </div>
 
                                 <div class="content pt-0" data-uuid="{{ item.uuid }}">
-                                    {% if item.chapter_description %}
-                                        <p class="mb-0 text-muted pl-1">{{ item.chapter_description }}</p>
-                                    {% endif %}
-
                                     <div id="sub-list" class="ui list sub-sortable pl-1">
                                         <div class="ui active inline loader mini"></div>
                                     </div>
@@ -344,10 +373,9 @@
                 xhrFields: {withCredentials: true},
                 data: {
                     chapter_uuid: chapter_uuid,
-                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
                 },
                 success: function(response) {
-                    var subBab;
+                    var item;
 
                     if (response.length > 0) {
                         var listItem = [];
@@ -355,7 +383,7 @@
                         $.each(response, function(index, value) {
                             var status;
                             var is_creator = value.creator_uuid === '{{ user.person.uuid }}';
-                            
+
                             if (value.explain_status == '{{ PUBLISHED }}') {
                                 status = '<i class="eye icon text-success mr-0"></i>';
                             } else if (value.explain_status == '{{ DRAFT }}') {
@@ -369,18 +397,24 @@
                             '<a id="update-explain" class="d-table-cell" data-explain-uuid="' + value.uuid + '" data-revision-uuid="' + value.explain_uuid + '">' +
                                 '<i class="edit icon mr-0"></i>' +
                             '</a>';
+
+                            var mover = '<span class="d-table-cell explain-move">' +
+                                '<i class="expand arrows alternate icon"></i>' +
+                            '</span>';
     
                             var item = '<div id="item_' + value.id + '" class="item">' +
                                 '<div class="d-flex w-100">' +
-                                    '<span class="control w-100"><a>' + value.explain_label + '</a></span>' +
+                                    '<span class="control w-100">' +
+                                        '<a href="' + value.permalink + '">' + value.explain_label + '</a>' +
+                                    '</span>' +
                             
-                                    '<div class="ml-auto text-right" style="width:155px">' +
+                                    '<div class="ml-auto text-right" style="width:175px">' +
                                         '<div class="d-table w-100 justify-content-around">' +
                                             '<small class="d-table-cell text-muted font-weight-normal">' +
                                                 'ref. ' + value.explain_version +
                                             '</small>' +
 
-                                            (is_creator ? '<span class="d-table-cell">' + status + '</span>' + control : '') +
+                                            (is_creator ? '<span class="d-table-cell">' + status + '</span>' + control + mover : '') +
                                         '</div>' +
                                     '</div>' +
                                 '</div>' +
@@ -389,12 +423,12 @@
                             listItem.push(item);
                         });
 
-                        subBab = listItem.join('');
+                        item = listItem.join('');
                     } else {
-                        subBab = 'Belum ada sub-bab.';
+                        item = 'Belum ada sub-bab.';
                     }
 
-                    $this.find('#sub-list').html(subBab);
+                    $this.find('#sub-list').html(item);
                     $this.addClass('has-opened');
                 },
                 error: function(error) {
@@ -438,7 +472,7 @@
                         csrfmiddlewaretoken: Cookies.get('csrftoken'),
                     },
                     success: function(response) {
-                        window.location.replace(response.url);
+                        window.location.replace(response.permalink);
                     },
                     error: function(error) {
                         $('.cancel').removeClass('disabled');

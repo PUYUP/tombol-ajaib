@@ -1,0 +1,33 @@
+<div class="ui list">
+    {% for item in chapters %}
+        <div class="item{% ifequal item.uuid revision.chapter.uuid %} active{% endifequal %}">
+            <i class="folder icon text-muted"></i>
+
+            <div class="content">
+                <div class="header">
+                    <a href="{% url 'chapter_revision_detail' item.chapter_uuid %}">
+                        {{ item.chapter_label }}
+                    </a>
+                </div>
+
+                {% if item.explains_list %}
+                    <div class="list">
+                        {% for explain in item.explains_list %}
+                            <div class="item">
+                                <i class="file icon text-muted"></i>
+
+                                <div class="content">
+                                    <div class="header">
+                                        <a href="{% url 'explain_revision_detail' explain.explain_uuid %}" class="item">
+                                            {{ explain.explain_label }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>

@@ -16,17 +16,17 @@ Guide = get_model('beacon', 'Guide')
 
 class GuideSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
-    url = serializers.SerializerMethodField(read_only=True)
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Guide
-        fields = ('label', 'category', 'creator', 'url',)
+        fields = ('label', 'category', 'creator', 'permalink',)
         read_only_fields = ('uuid',)
         extra_kwargs = {
             'creator': {'write_only': True}
         }
 
-    def get_url(self, obj):
+    def get_permalink(self, obj):
         revision = obj.guide_revisions.all().first()
         return reverse('guide_revision_editor', kwargs={'revision_uuid': revision.uuid})
 
@@ -43,3 +43,26 @@ class GuideSerializer(serializers.ModelSerializer):
 
         guide_obj = Guide.objects.create(**validated_data)
         return guide_obj
+
+
+class GuideListSerializer(serializers.ModelSerializer):
+    permalink = serializers.SerializerMethodField(read_only=True)
+    last_updated = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Guide
+        fields = '__all__'
+
+    def get_permalink(self, obj):
+        return reverse('guide_revision_detail', kwargs={'revision_uuid': obj.revision_uuid})
+
+    def get_last_updated(self, obj):
+
+        if obj.explain_date_created and obj.chapter_date_created:
+            if obj.explain_date_created >= obj.chapter_date_created:
+                return obj.explain_date_created
+            elif obj.explain_date_created <= obj.chapter_date_created:
+                return obj.chapter_date_created
+            else:
+                return obj.date_created
+        return obj.date_created

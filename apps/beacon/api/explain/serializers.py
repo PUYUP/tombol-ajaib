@@ -24,9 +24,11 @@ ExplainRevision = get_model('beacon', 'ExplainRevision')
 class ExplainSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
     creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
+    explain_uuid = serializers.UUIDField(read_only=True)
     explain_label = serializers.CharField(read_only=True)
     explain_version = serializers.CharField(read_only=True)
     explain_status = serializers.CharField(read_only=True)
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Explain
@@ -35,6 +37,13 @@ class ExplainSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'creator': {'write_only': True}
         }
+
+    def get_permalink(self, obj):
+        reverse_params = {
+            'revision_uuid': obj.explain_uuid
+        }
+
+        return reverse('explain_revision_detail', kwargs=reverse_params)
 
     @transaction.atomic
     def create(self, validated_data):

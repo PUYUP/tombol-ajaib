@@ -68,7 +68,7 @@ class ChapterApiView(viewsets.ViewSet):
         if not uuid:
             raise NotFound()
 
-        person = getattr(request.user, 'person', None)
+        person = request.person
         queryset = Chapter.objects.filter(uuid=uuid, creator=person)
 
         if queryset.exists():
@@ -85,7 +85,7 @@ class ChapterApiView(viewsets.ViewSet):
             permission_classes=[IsAuthenticated],
             url_path='sort', url_name='sort_stage')
     def sort_stage(self, request):
-        person = getattr(request.user, 'person', None)
+        person = request.person
         sortable = request.data.get('sortable', None)
         sortable_list = sortable.split(',')
 

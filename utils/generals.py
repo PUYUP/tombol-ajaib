@@ -5,6 +5,16 @@ from django.apps import apps
 from django.apps.config import MODELS_MODULE_NAME
 from django.core.exceptions import AppRegistryNotReady, ValidationError
 
+from rest_framework import renderers
+
+
+class JSONExtendRenderer(renderers.BaseRenderer):
+    media_type = 'application/json'
+    format = 'json'
+
+    def render(self, data, media_type=None, renderer_context=None):
+        return data.encode(self.charset)
+
 
 def non_python_keyword(value):
     if keyword.iskeyword(value):

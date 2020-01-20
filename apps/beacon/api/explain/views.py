@@ -58,13 +58,12 @@ class ExplainApiView(viewsets.ViewSet):
         context = {'request': self.request}
         params = request.query_params
         chapter_uuid = params.get('chapter_uuid', None)
+        person = request.person
+        person_pk = getattr(person, 'pk', None)
 
         chapter_uuid = check_uuid(uid=chapter_uuid)
         if not chapter_uuid:
             raise NotFound()
-
-        person = getattr(request.user, 'person', None)
-        status_choices = [item for item in STATUS_CHOICES if item[0] in [DRAFT, PUBLISHED]]
 
         explain_params = dict()
         explain_fields = ('pk', 'uuid', 'label', 'version', 'status')
@@ -75,15 +74,6 @@ class ExplainApiView(viewsets.ViewSet):
                 When(num_revision=1, then=Subquery(explain_revisions.values(item)[:1])),
                 default=Subquery(explain_revisions.filter(status=PUBLISHED).values(item)[:1])
             )
-
-        # Filter explains status
-        # If creator show PUBLISHED and DRAFT
-        # If other user only PUBLISHED
-        status_for_explain_creator = list()
-        for item in status_choices:
-            status = item[0]
-            status_when = When(Q(creator=person) & Q(explain_status=status), then=Value(status))
-            status_for_explain_creator.append(status_when)
 
         queryset = Explain.objects \
             .prefetch_related(Prefetch('creator'), Prefetch('creator__user'),
@@ -96,17 +86,12 @@ class ExplainApiView(viewsets.ViewSet):
                     default=99999
                 ),
                 **explain_params) \
-            .filter(
-                chapter__uuid=chapter_uuid,
-                explain_status=Case(
-                    *status_for_explain_creator,
-                    output_field=CharField(),
-                    default=Value(PUBLISHED)
-                )) \
+            .filter(chapter__uuid=chapter_uuid) \
+            .exclude(~Q(creator__pk=person_pk), ~Q(explain_status=PUBLISHED)) \
             .order_by('sort_stage')
  
         serializer = ExplainSerializer(queryset, many=True, context=context)
-        return Response(serializer.data, status=response_status.HTTP_201_CREATED)
+        return Response(serializer.data, status=response_status.HTTP_200_OK)
 
     @method_decorator(never_cache)
     @transaction.atomic
@@ -128,7 +113,7 @@ class ExplainApiView(viewsets.ViewSet):
         if not uuid:
             raise NotFound()
 
-        person = getattr(request.user, 'person', None)
+        person = request.person
         queryset = Explain.objects.filter(uuid=uuid, creator=person)
 
         if queryset.exists():
@@ -145,7 +130,7 @@ class ExplainApiView(viewsets.ViewSet):
             permission_classes=[IsAuthenticated],
             url_path='sort', url_name='sort_stage')
     def sort_stage(self, request):
-        person = getattr(request.user, 'person', None)
+        person = request.person
         sortable = request.data.get('sortable', None)
         sortable_list = sortable.split(',')
 

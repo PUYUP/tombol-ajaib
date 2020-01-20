@@ -56,7 +56,7 @@ class IsAccountValidated(permissions.BasePermission):
     message = _("Akun belum tervalidasi.")
 
     def has_permission(self, request, view):
-        person = getattr(request.user, 'person', None)
+        person = request.person
         if not person:
             return False
 

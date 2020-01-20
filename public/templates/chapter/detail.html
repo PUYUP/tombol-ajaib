@@ -1,0 +1,189 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+{% load sidenav %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="ui container main-content">
+        <div class="row">
+            <div class="col-12 col-sm-12 col-md-4">
+                <div class="chapter-list">
+                    {% chapter_sidenav request revision %}
+                </div>
+            </div> <!-- /.col -->
+
+            <div class="col-12 col-sm-12 col-md-8">
+                <h1 class="mt-0 mb-0">{{ revision.label }}</h1>
+                
+                <div class="ui horizontal bulleted list small text-muted">
+                    <div class="item">
+                        ref. {{ revision.version }}
+                    </div>
+
+                    <div class="item">
+                        {{ revision.date_created }}
+                    </div>
+
+                    <div class="item">
+                        <a id="update-chapter" class="update-single" data-chapter-uuid="{{ revision.chapter.uuid }}" data-revision-uuid="{{ revision.uuid }}">
+                            perbarui
+                        </a>
+                    </div>
+                </div>
+
+                <div class="ui bulleted list">
+                    {% for item in explains %}
+                        <div class="item">
+                            <a href="{% url 'explain_revision_detail' item.explain_uuid %}" class="item">
+                                {{ item.explain_label }}
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div>
+
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <div class="ui modal small modal-chapter">
+            <div class="header">
+                Tambah Bab
+            </div>
+
+            <div class="image content">
+                <form class="ui form form-chapter w-100">
+                    <div class="field">
+                        <label>Nama</label>
+
+                        <div class="ui left icon input">
+                            <i class="clipboard outline icon"></i>
+                            <input name="label" type="text" required>
+                        </div>
+                    </div>
+
+                    <div class="grouped fields">
+                        <label>Status</label>
+
+                        <div class="row m-0">
+                            {% for item in status_choices %}
+                                <div class="field col-12 col-sm-6">
+                                    <div class="ui radio checkbox">
+                                        <input type="radio" name="status" value="{{ item.0 }}" required>
+                                        <label>{{ item.1 }}</label>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span></label>
+
+                        <div class="ui input">
+                            <textarea name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Changelog</label>
+
+                        <div class="ui input">
+                            <textarea name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="actions d-flex w-100">
+                <div id="cancel" class="ui button close mr-auto cancel">Batal</div>
+
+                <div id="submit-chapter" class="ui button primary">
+                    <i class="check icon"></i>
+                    Simpan
+                </div>
+            </div>
+        </div> <!-- /.modal add chapter -->
+    {% endif %}
+{% endblock %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/sidebar.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
+
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/checkbox.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/loader.min.css' %}">
+
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/modal.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/dimmer.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/transition.min.css' %}">
+    {% endif %}
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/sidebar.min.js' %}"></script>
+
+    <script type="text/javascript">
+       $('.ui.sidebar').sidebar();
+    </script>
+
+    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/modal.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/dimmer.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/semantic/components/transition.min.js' %}"></script>
+
+        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+        <script type="text/javascript">
+            var globalParams = {
+                'revision_guide_pk': '{{ revision.chapter.guide.pk }}',
+                'published': '{{ PUBLISHED }}',
+                'draft': '{{ DRAFT }}',
+            }
+
+            // ...
+            // INIT MODAL
+            // ...
+            function initModal(name=null, data=null) {
+                $modal = $('.modal-' + name).modal({
+                    autofocus: false,
+                    closable: false,
+                    onShow: function() {
+                        var $element = $(this);
+                        initChapterForm(data);
+                    },
+                    onHide: function($element) {
+                        var $element = $(this);
+
+                        // Clear values
+                        $element.find('form').removeAttr('data-uuid');
+                        $element.find('form').removeAttr('from-detail');
+                        $element.find('form').form('reset');
+                        $element.find('form').removeClass('loading');
+                        $('#submit-chapter, .cancel').removeClass('disabled');
+                    }
+                });
+
+                $modal.modal('show');
+            }
+
+            // ...
+            // CLOSE MODAL
+            // ...
+            $(document).on('click', '#cancel', function(event) {
+                event.preventDefault();
+                $('.modal').modal('hide');
+            });
+        </script>
+
+        <script type="text/javascript" src="{% static 'vendors/js/chapter.js' %}"></script>
+    {% endif %}
+{% endblock %}

@@ -92,7 +92,7 @@ if not is_model_registered('beacon', 'Explain'):
 if not is_model_registered('beacon', 'Content'):
     class Content(AbstractContent):
         class Meta(AbstractContent.Meta):
-            db_table = 'guides_explain_content'
+            db_table = 'guides_content'
 
     __all__.append('Content')
 

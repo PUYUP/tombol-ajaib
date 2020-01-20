@@ -1,0 +1,25 @@
+{% if page_objs.has_other_pages %}
+    <div class="ui pagination menu mini">
+        {% if page_objs.has_previous %}
+            <a class="item" href="?page={{ page_objs.previous_page_number }}">&laquo;</a>
+        {% endif %}
+
+        {% if 1 not in proper %}
+            <a class="item{% if page_objs.number == i %} active{% endif %}" href="?page=1">1</a>
+            <div class="disabled item">...</div>
+        {% endif %}
+
+        {% for i in proper %}
+            <a class="item{% if page_objs.number == i %} active{% endif %}" href="?page={{ i }}">{{ i }}</a>
+        {% endfor %}
+
+        {% if total_page not in proper %}
+            <div class="disabled item">...</div>
+            <a class="item{% if page_objs.number == i %} active{% endif %}" href="?page={{ total_page }}">{{ total_page }}</a>
+        {% endif %}
+
+        {% if page_objs.has_next %}
+            <a class="item" href="?page={{ page_objs.next_page_number }}">&raquo;</a>
+        {% endif %}
+    </div>
+{% endif %}

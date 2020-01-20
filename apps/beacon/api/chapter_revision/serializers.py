@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Case, When, Subquery, OuterRef, Count
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import ugettext_lazy as _
@@ -12,7 +12,7 @@ from rest_framework.exceptions import NotAcceptable, NotFound
 from utils.generals import get_model, check_uuid
 
 # LOCAL UTILS
-from apps.beacon.utils.constant import DRAFT, REJECTED
+from apps.beacon.utils.constant import DRAFT, REJECTED, PUBLISHED
 
 # PERSON APP UTILS
 from apps.person.utils.auths import CurrentPersonDefault
@@ -23,6 +23,7 @@ ChapterRevision = get_model('beacon', 'ChapterRevision')
 
 class ChapterRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = ChapterRevision
@@ -40,7 +41,7 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
             request = context.get('request', None)
             chapter_uuid = data.get('chapter_uuid', None)
             revision_uuid = data.get('revision_uuid', None)
-            person = getattr(request.user, 'person', None)
+            person = request.person
 
             # Validate uuid
             revision_uuid = check_uuid(uid=revision_uuid)
@@ -84,6 +85,13 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
                 kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
 
+    def get_permalink(self, obj):
+        reverse_params = {
+            'revision_uuid': obj.uuid
+        }
+
+        return reverse('chapter_revision_detail', kwargs=reverse_params)
+
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):
         try:
@@ -96,7 +104,7 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
 
         # get variable
         label = request.data.get('label', None)
-        person = getattr(request.user, 'person', None)
+        person = request.person
         chapter_uuid = request.data.get('chapter_uuid', None)
         chapter_uuid = check_uuid(uid=chapter_uuid)
 

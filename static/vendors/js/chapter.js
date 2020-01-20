@@ -1,45 +1,48 @@
 // ...
 // SORTABLE
 // ...
-$sortChapter = $('#sortable').sortable({
-    axis: 'y',
-    containment: 'parent',
-    items: '> div',
-    tolerance: 'pointer',
-    cursor: 'move',
-    opacity: 0.7,
-});
-
-$sortChapter.on('sortupdate', function (event, ui) {
-    var data = $(this).sortable('serialize', { key: 'sort' }),
-        dataArray = data.split('&'),
-        dataClean = [];
-
-    $.each(dataArray, function (index, value) {
-        var valueClean = value.replace('sort=', '');
-        dataClean.push(valueClean);
+if($.sortable) {
+    $sortChapter = $('#sortable').sortable({
+        axis: 'y',
+        containment: 'parent',
+        items: '> div',
+        handle: '.chapter-move',
+        tolerance: 'pointer',
+        cursor: 'move',
+        opacity: 0.7,
     });
 
-    sortStageChapter(dataClean);
-});
+    $sortChapter.on('sortupdate', function (event, ui) {
+        var data = $(this).sortable('serialize', { key: 'sort' }),
+            dataArray = data.split('&'),
+            dataClean = [];
 
-function sortStageChapter(data) {
-    $.ajax({
-        method: 'POST',
-        url: '/api/beacon/chapters/sort/',
-        headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
-        xhrFields: { withCredentials: true },
-        data: {
-            sortable: data.join(','),
-            csrfmiddlewaretoken: Cookies.get('csrftoken'),
-        },
-        success: function (response) {
+        $.each(dataArray, function (index, value) {
+            var valueClean = value.replace('sort=', '');
+            dataClean.push(valueClean);
+        });
 
-        },
-        error: function (error) {
-
-        }
+        sortStageChapter(dataClean);
     });
+
+    function sortStageChapter(data) {
+        $.ajax({
+            method: 'POST',
+            url: '/api/beacon/chapters/sort/',
+            headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
+            xhrFields: { withCredentials: true },
+            data: {
+                sortable: data.join(','),
+                csrfmiddlewaretoken: Cookies.get('csrftoken'),
+            },
+            success: function (response) {
+
+            },
+            error: function (error) {
+
+            }
+        });
+    }
 }
 
 // ...
@@ -77,8 +80,9 @@ $(document).on('click', '#update-chapter', function (event) {
 
     $('.modal-chapter').find('form').attr('data-revision-uuid', $(this).data('revision-uuid'));
     $('.modal-chapter').find('form').attr('data-chapter-uuid', $(this).data('chapter-uuid'));
-    $('.modal-chapter').find('form').attr('data-is-change', true);
-
+    $('.modal-chapter').find('form').attr('data-from-detail', $(this).hasClass('update-single'));
+    $('.modal-chapter').find('form').attr('data-is-update', true);
+    
     submitChapterHandler($(this), fields);
 });
 
@@ -133,14 +137,13 @@ function initChapterForm(data = null) {
 
                 $(event.target).addClass('loading');
 
-                var is_change = $(event.target).data('is-change'),
-                    chapter_uuid = $(event.target).data('chapter-uuid'),
-                    revision_uuid = $(event.target).data('revision-uuid');
+                var is_update = $(event.target).data('is-update');
 
-                if (is_change) {
-                    fields.chapter_uuid = chapter_uuid;
-                    fields.revision_uuid = revision_uuid;
-                    fields.is_change = true;
+                if (is_update) {
+                    fields.chapter_uuid = $(event.target).data('chapter-uuid');
+                    fields.revision_uuid = $(event.target).data('revision-uuid');
+                    fields.update_from_detail = $(event.target).data('from-detail');
+                    fields.is_update = true;
                 }
 
                 submitChapterHandler(event.target, fields);
@@ -172,7 +175,7 @@ function submitChapterHandler($element = null, $fields) {
     if ($fields.revision_uuid) url = '/api/beacon/chapters-revisions/';
 
     // Change action
-    if ($fields.is_change) {
+    if ($fields.is_update) {
         url = '/api/beacon/chapters-revisions/' + $fields.revision_uuid + '/';
         method = 'PATCH';
 
@@ -191,9 +194,15 @@ function submitChapterHandler($element = null, $fields) {
             csrfmiddlewaretoken: Cookies.get('csrftoken'),
         },
         success: function (response) {
-            if ($fields.is_change || !$fields.chapter_uuid) window.location.reload();
+            // Update from single chapter page...
+            if ($fields.update_from_detail) {
+                //if ($fields.update_from_detail && response.status == globalParams.draft) $('.modal-chapter').modal('hide');
+                //if ($fields.update_from_detail && response.status == globalParams.published) window.location.href = response.permalink;
+            }
 
-            if ($fields.chapter_uuid && !$fields.is_change) {
+            if ($fields.is_update || !$fields.chapter_uui) window.location.reload();
+
+            if ($fields.chapter_uuid && !$fields.is_update) {
                 initModal('chapter');
                 initChapterForm(response);
 

@@ -19,10 +19,12 @@ from apps.person.utils.auths import CurrentPersonDefault
 
 Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
+Content = get_model('beacon', 'Content')
 
 
 class ExplainRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = ExplainRevision
@@ -39,7 +41,7 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
         request = context.get('request', None)
         explain_uuid = data.get('explain_uuid', None)
         revision_uuid = data.get('revision_uuid', None)
-        person = getattr(request.user, 'person', None)
+        person = request.person
 
         # Validate uuid
         revision_uuid = check_uuid(uid=revision_uuid)
@@ -72,7 +74,6 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
             if revision_obj:
                 kwargs['data']['explain'] = revision_obj.explain.pk
                 kwargs['data']['label'] = revision_obj.label
-                kwargs['data']['description'] = revision_obj.description
                 kwargs['data']['changelog'] = revision_obj.changelog
                 kwargs['data']['status'] = DRAFT
 
@@ -82,6 +83,24 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
             # set mutable flag back
             kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
+
+    def get_permalink(self, obj):
+        try:
+            request = self.context['request']
+        except KeyError:
+            raise NotAcceptable()
+
+        # uuid from previous version
+        revision_uuid = request.data.get('revision_uuid', None)
+
+        reverse_params = {
+            'revision_uuid': obj.uuid
+        }
+
+        # redirect to editor if update from previous revision
+        if revision_uuid:
+            return reverse('explain_revision_editor', kwargs=reverse_params)
+        return reverse('explain_revision_detail', kwargs=reverse_params)
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):
@@ -95,9 +114,12 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
 
         # get variable
         label = request.data.get('label', None)
-        person = getattr(request.user, 'person', None)
+        person = request.person
         explain_uuid = request.data.get('explain_uuid', None)
         explain_uuid = check_uuid(uid=explain_uuid)
+
+        if not explain_uuid:
+            raise NotAcceptable()
 
         revision_obj, created = ExplainRevision.objects \
             .filter(Q(explain__uuid=explain_uuid), Q(status=DRAFT)) \
@@ -124,9 +146,26 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
                             description=item.description)
                         intro_collection.append(intro_obj)
                     intro_model.objects.bulk_create(intro_collection)
+
+                # Create content...
+                plain = '...'
+                blob = plain.encode('utf-8')
+
+                if instance.content:
+                    blob = getattr(instance.content, 'blob', plain)
+
+                content = Content.objects.create(creator=person, blob=blob)
+                revision_obj.content = content
+                revision_obj.save()
+
         return revision_obj
 
     def update(self, instance, validated_data):
+        try:
+            request = self.context['request']
+        except KeyError:
+            raise NotAcceptable()
+
         # only revision with status is DRAFT allow to update
         if instance.status != DRAFT:
             raise NotAcceptable(detail=_("Revisi sudah terpublikasi. Tindakan ditolak."))
@@ -136,6 +175,15 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
             value = validated_data.get(item, None)
             if value:
                 setattr(instance, item, value)
+
+        plain = request.data.get('content_blob', None)
+        blob = plain.encode('utf-8')
+
+        content = getattr(instance, 'content', None)
+        if content:
+            content.blob = blob
+            content.save()
+            instance.content = content
 
         instance.save()
         return instance

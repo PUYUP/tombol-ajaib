@@ -95,7 +95,7 @@ class GuideRevisionApiView(viewsets.ViewSet):
         if not uuid:
             raise NotFound()
 
-        person = getattr(request.user, 'person', None)
+        person = request.person
         queryset = GuideRevision.objects.filter(uuid=uuid, creator=person)
 
         if queryset.exists():

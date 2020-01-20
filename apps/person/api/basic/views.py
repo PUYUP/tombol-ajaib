@@ -182,7 +182,7 @@ class PersonApiView(viewsets.ViewSet):
             raise NotAcceptable(detail=_("Data tidak benar."))
 
         response = dict()
-        person = getattr(request.user, 'person', None)
+        person = request.person
         [[identifier, value]] = data.items()
 
         if person and identifier and value:

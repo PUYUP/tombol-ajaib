@@ -23,7 +23,7 @@ GuideRevision = get_model('beacon', 'GuideRevision')
 
 class GuideRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
-    url = serializers.SerializerMethodField(read_only=True)
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = GuideRevision
@@ -38,13 +38,13 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         context = kwargs.get('context', None)
 
         request = context.get('request', None)
+        revision_uuid = data.get('revision_uuid', None)
         uuid = data.get('uuid', None)
-        guide_uuid = data.get('guide_uuid', None)
-        person = getattr(request.user, 'person', None)
+        person = request.person
 
         # Validate uuid
+        revision_uuid = check_uuid(uid=revision_uuid)
         uuid = check_uuid(uid=uuid)
-        guide_uuid = check_uuid(uid=guide_uuid)
 
         """
         Manipulasi;
@@ -52,26 +52,26 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         Jika revision dnegan status DRAFT tidak ada maka buat revision baru
         dengan data berasal dari revisi PUBLISHED terakhir
         """
-        if uuid and guide_uuid:
+        if revision_uuid and uuid:
             # mutable data
             _mutable = data._mutable
             kwargs['data']._mutable = True
 
             # get last DRAFT
             revision_obj = GuideRevision.objects.filter(
-                creator=person, guide__uuid=guide_uuid,
+                creator=person, guide__uuid=uuid,
                 status=DRAFT).first()
 
             # get current GuideRevision
             if not revision_obj:
                 try:
                     revision_obj = GuideRevision.objects.get(
-                        creator=person, uuid=uuid, guide__uuid=guide_uuid)
+                        creator=person, uuid=revision_uuid, guide__uuid=uuid)
                 except ObjectDoesNotExist:
                     revision_obj = None
 
             if revision_obj:
-                kwargs['data']['guide'] = revision_obj.guide.pk
+                kwargs['data']['guide'] = revision_obj.guide_id
                 kwargs['data']['label'] = revision_obj.label
                 kwargs['data']['description'] = revision_obj.description
                 kwargs['data']['changelog'] = revision_obj.changelog
@@ -84,7 +84,7 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
             kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
 
-    def get_url(self, obj):
+    def get_permalink(self, obj):
         try:
             request = self.context['request']
         except KeyError:
@@ -110,12 +110,15 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
 
         # get variable
         label = request.data.get('label', None)
-        person = getattr(request.user, 'person', None)
-        guide_uuid = request.data.get('guide_uuid', None)
-        guide_uuid = check_uuid(uid=guide_uuid)
+        person = request.person
+        uuid = request.data.get('uuid', None)
+        uuid = check_uuid(uid=uuid)
+
+        if not uuid:
+            raise NotAcceptable()
 
         revision_obj, created = GuideRevision.objects \
-            .filter(Q(guide__uuid=guide_uuid), Q(status=DRAFT)) \
+            .filter(Q(guide__uuid=uuid), Q(status=DRAFT)) \
             .get_or_create(**validated_data, defaults={'label': label})
 
         if revision_obj and created:
