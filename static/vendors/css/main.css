@@ -84,6 +84,14 @@ h1 { font-size: 22px; }
     padding-bottom: 10px;
 }
 
+
+@media only screen and (max-width: 767px) {
+    .ui.container {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
 @media only screen and (max-width: 991px) and (min-width: 768px) {
     .ui.container {
         width: 100% !important;

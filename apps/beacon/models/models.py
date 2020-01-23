@@ -1,6 +1,6 @@
-from .models_general import *
-from .models_abstract import *
-from .models_revission import *
+from .general import *
+from .abstract import *
+from .revision import *
 
 # PROJECT UTILS
 from utils.generals import is_model_registered

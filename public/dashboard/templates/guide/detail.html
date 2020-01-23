@@ -8,17 +8,17 @@
 
 {% block content %}
     <div class="container ui main-content">
-        {% guide_tab request guide_revision_uuid identifier %}
+        {% guide_tab %}
 
-        {% if revision_obj.status == 'draft' %}
+        {% if guide_revision_obj.status == 'draft' %}
 
-            <form class="ui form mb-4 pb-4" data-uuid="{{ revision_obj.uuid }}">
+            <form class="ui form mb-4 pb-4" data-uuid="{{ guide_revision_obj.uuid }}">
                 <div class="field">
                     <label>Nama Panduan</label>
 
                     <div class="ui left icon input">
                         <i class="book icon"></i>
-                        <input name="label" type="text" value="{{ revision_obj.label }}" required>
+                        <input name="label" type="text" value="{{ guide_revision_obj.label }}" required>
                     </div>
                 </div>
 
@@ -26,7 +26,7 @@
                     <label>Keterangan</label>
 
                     <div class="ui input">
-                        <textarea name="description" required>{{ revision_obj.description }}</textarea>
+                        <textarea name="description" required>{{ guide_revision_obj.description }}</textarea>
                     </div>
                 </div>
 
@@ -34,13 +34,13 @@
                     <label>Changelog</label>
 
                     <div class="ui input">
-                        <textarea name="changelog" rows="3" required>{% if revision_obj.changelog %}{{ revision_obj.changelog }}{% endif %}</textarea>
+                        <textarea name="changelog" rows="3" required>{% if guide_revision_obj.changelog %}{{ guide_revision_obj.changelog }}{% endif %}</textarea>
                     </div>
                 </div>
 
                 <div class="ui error message"></div>
 
-                <div class="ui primary button submit mr-auto" data-uuid="{{ revision_obj.uuid }}">
+                <div class="ui primary button submit mr-auto" data-uuid="{{ guide_revision_obj.uuid }}">
                     <i class="check icon"></i>
                     Submit
                 </div>
@@ -86,19 +86,104 @@
     <script type="text/javascript" src="{% static 'vendors/semantic/components/api.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/semantic/components/tab.min.js' %}"></script>
 
+    <script type="text/javascript" src="{% static 'vendors/js/jquery.serialize-object.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/jquery-ui/jquery-ui.min.js' %}"></script>
 
     <script type="text/javascript">
-        $('.dynamic.example .menu .item')
-        .tab({
-            apiSettings: {
-                url: '{tab}/'
+        $.fn.api.settings.api = {
+            'guides revisions'  : '/api/beacon/guides-revisions/{uuid}/',
+        };
+
+        // ...
+        // FORM HANDLER
+        // ...
+        $('.form').form({
+            on: 'blur',
+            inline: true,
+            fields: {
+                label: {
+                    identifier: 'label',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Nama panduan tidak boleh kosong'
+                        },
+                        {
+                            type   : 'minLength[4]',
+                            prompt : 'Nama panduan minimal 4 karakter'
+                        }
+                    ]
+                },
+                description: {
+                    identifier: 'description',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Keterangan tidak boleh kosong'
+                        },
+                        {
+                            type   : 'minLength[25]',
+                            prompt : 'Keterangan minimal 25 karakter'
+                        }
+                    ]
+                },
+                changelog: {
+                    identifier: 'changelog',
+                    rules: [
+                        {
+                            type   : 'empty',
+                            prompt : 'Changelog tidak boleh kosong'
+                        }
+                    ]
+                },
+            }
+        })
+        .api({
+            method: 'PATCH',
+            action: 'guides revisions',
+            serializeForm: true,
+            beforeXHR: function(xhr) {
+                xhr.setRequestHeader ('X-CSRFToken', Cookies.get('csrftoken'));
+                return xhr;
             },
-            evaluateScripts : 'once',
-            context : 'parent',
-            auto : false,
-            path: '/'
+            onSuccess: function(response) {
+                if (response.status === 'published') {
+                    window.location.replace(response.permalink);
+                } else {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Pembaruan berjalan sukses!',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+                }
+            },
+            onFailure: function(response) {
+                var errorMessage = [];
+
+                $.each(response, function(index, item) {
+                    var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                    
+                    if (Array.isArray(item)) {
+                        errorMessage.push(label + item.join(' '));
+                    } else {
+                        errorMessage.push(label + item);
+                    }
+                });
+
+                if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                // Show error
+                if (errorMessage) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                    });
+                }
+            }
         });
     </script>
 {% endblock %}

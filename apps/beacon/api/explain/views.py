@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status as response_status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, NotAcceptable
 
 # SERIALIZERS
 from .serializers import ExplainSerializer
@@ -56,40 +56,56 @@ class ExplainApiView(viewsets.ViewSet):
 
     def list(self, request, format=None):
         context = {'request': self.request}
+        person_pk = request.person_pk
         params = request.query_params
         chapter_uuid = params.get('chapter_uuid', None)
-        person = request.person
-        person_pk = getattr(person, 'pk', None)
 
         chapter_uuid = check_uuid(uid=chapter_uuid)
         if not chapter_uuid:
-            raise NotFound()
+            raise NotAcceptable(detail=_("Guide UUID invalid."))
 
-        explain_params = dict()
-        explain_fields = ('pk', 'uuid', 'label', 'version', 'status')
-        explain_revisions = ExplainRevision.objects.filter(explain__pk=OuterRef('pk'))
+        # ...
+        # Annotate Published ExplainRevision
+        # ...
+        published_params = dict()
+        published_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        published_revisions = ExplainRevision.objects \
+            .filter(explain_id=OuterRef('id'), status=PUBLISHED)
 
-        for item in explain_fields:
-            explain_params['explain_%s' % item] = Case(
-                When(num_revision=1, then=Subquery(explain_revisions.values(item)[:1])),
-                default=Subquery(explain_revisions.filter(status=PUBLISHED).values(item)[:1])
-            )
+        for item in published_fields:
+            published_params['published_%s' % item] = Subquery(published_revisions.values(item)[:1])
+
+        # ...
+        # Annotate Draft ExplainRevision
+        # ...
+        draft_fields = ('uuid', 'label', 'version', 'status')
+        draft_params = dict()
+        draft_revisions = ExplainRevision.objects \
+            .filter(explain_id=OuterRef('id'), status=DRAFT) \
+            .order_by('-version')
+
+        for item in draft_fields:
+            draft_params['draft_%s' % item] = Subquery(draft_revisions.values(item)[:1])
 
         queryset = Explain.objects \
             .prefetch_related(Prefetch('creator'), Prefetch('creator__user'),
                               Prefetch('chapter'), Prefetch('guide')) \
             .select_related('creator', 'creator__user', 'chapter', 'guide') \
+            .filter(Q(chapter__uuid=chapter_uuid) | Q(chapter__chapter_revisions__uuid=chapter_uuid)) \
             .annotate(
-                num_revision=Count('explain_revisions'),
+                num_revision=Count('explain_revisions', distinct=True),
                 sort_stage=Case(
                     When(stage__isnull=False, then=F('stage')),
                     default=99999
                 ),
-                **explain_params) \
-            .filter(chapter__uuid=chapter_uuid) \
-            .exclude(~Q(creator__pk=person_pk), ~Q(explain_status=PUBLISHED)) \
-            .order_by('sort_stage')
- 
+                **published_params,
+                **draft_params) \
+            .order_by('sort_stage') \
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
+
+        if not queryset.exists():
+            raise NotFound(_("Not found."))
+
         serializer = ExplainSerializer(queryset, many=True, context=context)
         return Response(serializer.data, status=response_status.HTTP_200_OK)
 

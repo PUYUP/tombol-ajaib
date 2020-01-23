@@ -1,8 +1,6 @@
 import uuid
-from pprint import pprint
 
 from django.db import models
-from django.db.models import F
 from django.utils.translation import ugettext_lazy as _
 from django.utils.text import slugify
 from django.contrib.contenttypes.fields import GenericRelation
@@ -16,10 +14,10 @@ from apps.beacon.utils.constant import (
 class AbstractGuide(models.Model):
     creator = models.ForeignKey(
         'person.Person', null=True, on_delete=models.SET_NULL,
-        related_name='guide')
+        related_name='guides')
     category = models.ForeignKey(
         'beacon.Category', null=True, on_delete=models.SET_NULL,
-        related_name='guide')
+        related_name='guides')
     label = models.CharField(max_length=255)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -32,7 +30,7 @@ class AbstractGuide(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
-        ordering = ['date_created']
+        ordering = ['-date_created']
         verbose_name = _("Guide")
         verbose_name_plural = _("Guides")
 

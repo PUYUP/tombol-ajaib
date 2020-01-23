@@ -2,10 +2,7 @@ import uuid
 import base64
 import sys
 
-from pprint import pprint
-
 from django.db import models
-from django.db.models import F
 from django.utils.translation import ugettext_lazy as _
 from django.utils.text import slugify
 from django.contrib.contenttypes.fields import GenericRelation

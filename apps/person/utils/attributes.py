@@ -8,8 +8,6 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import RegexValidator, validate_email, URLValidator
 from django.core.files import File
 
-from pprint import pprint
-
 # PROJECT UTILS
 from utils.generals import get_model
 

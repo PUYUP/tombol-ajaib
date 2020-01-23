@@ -86,6 +86,7 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
 
     def get_permalink(self, obj):
+        print(obj)
         reverse_params = {
             'revision_uuid': obj.uuid
         }

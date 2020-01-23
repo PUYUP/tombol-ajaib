@@ -175,19 +175,6 @@ class GuideRevisionDetailView(View):
 
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
-class GuideEditorView(View):
-    template_name = 'templates/guide/initial.html'
-    context = dict()
-
-    def get(self, request):
-        categories_obj = Category.objects.all()
-
-        self.context['title'] = _("Kirim Panduan")
-        self.context['categories'] = categories_obj
-        return render(request, self.template_name, self.context)
-
-
-@method_decorator(login_required(login_url='login'), name='dispatch')
 class GuideRevisionEditorView(View):
     template_name = 'templates/guide/editor-revision.html'
     context = dict()

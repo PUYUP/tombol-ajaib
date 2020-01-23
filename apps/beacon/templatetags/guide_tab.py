@@ -16,27 +16,7 @@ register = template.Library()
 GuideRevision = get_model('beacon', 'GuideRevision')
 
 
-def guide_tab(request, guide_revision_uuid=None, identifier=None):
-    person_pk = request.person_pk
+def guide_tab(context):
+    return context
 
-    try:
-        revision_obj = GuideRevision.objects \
-            .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
-            .select_related('creator', 'creator__user', 'guide') \
-            .filter(uuid=guide_revision_uuid, creator__pk=person_pk) \
-            .annotate(
-                num_explain=Count('guide__explains', distinct=True),
-                num_chapter=Count('guide__chapters', distinct=True)) \
-            .get()
-    except ObjectDoesNotExist:
-        raise Http404(_("Tidak ditemukan."))
-
-    data = {
-        'revision_obj': revision_obj,
-        'guide_revision_uuid': guide_revision_uuid,
-        'identifier': identifier
-    }
-
-    return data
-
-register.inclusion_tag('dashboard/templates/guide_tab.html')(guide_tab)
+register.inclusion_tag('dashboard/templates/guide_tab.html', takes_context=True)(guide_tab)

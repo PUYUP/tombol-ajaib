@@ -24,6 +24,7 @@ GuideRevision = get_model('beacon', 'GuideRevision')
 class GuideRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
     permalink = serializers.SerializerMethodField(read_only=True)
+    permalink_update = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = GuideRevision
@@ -97,6 +98,9 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         if revision_uuid:
             return reverse('guide_revision_editor', kwargs={'revision_uuid': obj.uuid})
         return reverse('guide_revision_detail', kwargs={'revision_uuid': obj.uuid})
+
+    def get_permalink_update(self, obj):
+        return reverse('dashboard_guide_detail', kwargs={'guide_revision_uuid': obj.uuid})
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):

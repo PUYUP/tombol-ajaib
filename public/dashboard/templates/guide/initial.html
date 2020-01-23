@@ -77,61 +77,20 @@
 {% block js %}
     <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/semantic/components/api.min.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'vendors/js/jquery.serialize-object.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
     
     <script type="text/javascript">
+        $.fn.api.settings.api = {
+            'guides create'  : '/api/beacon/guides/',
+        };
+
         $('.checkbox').checkbox();
 
         // ...
-        // SUBMIT HANDLER
-        // ...
-        function submitHandler($element=null, $fields) {
-            $.ajax({
-                method: 'POST',
-                url: '/api/beacon/guides/',
-                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                xhrFields: {withCredentials: true},
-                data: {
-                    ...$fields,
-                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
-                },
-                success: function(response) {
-                    window.location.replace(response.permalink);
-                },
-                error: function(error) {
-                    $($element).removeClass('loading');
-
-                    if (error && error.responseJSON) {
-                        var errorJSON = error.responseJSON,
-                            errorMessage = [];
-
-                        $.each(errorJSON, function(index, item) {
-                            var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-                            
-                            if (Array.isArray(item)) {
-                                errorMessage.push(label + item.join(' '));
-                            } else {
-                                errorMessage.push(label + item);
-                            }
-                        });
-
-                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
-
-                        // Show error
-                        if (errorMessage) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Oops...',
-                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
-                            });
-                        }
-                    }
-                }
-            });
-        }
-
-        // ...
-        // FORM VALIDATION
+        // FORM HANDLER
         // ...
         $('.form').form({
             on: 'blur',
@@ -171,19 +130,57 @@
                         }
                     ]
                 },
+            }
+        })
+        .api({
+            method  : 'POST',
+            action  : 'guides create',
+            serializeForm: true,
+            beforeXHR: function(xhr) {
+                xhr.setRequestHeader ('X-CSRFToken', Cookies.get('csrftoken'));
+                return xhr;
             },
-            onSuccess: function(event, fields) {
-                // Prevent default form submit!
-                // We use REST API for handle login.
-                if (event) {
-                    event.preventDefault();
+            onSuccess: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Sedang mengalihkan...',
+                    showCloseButton: false,
+                    showCancelButton: false,
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                });
 
-                    $(event.target).addClass('loading');
-                    submitHandler(event.target, fields);
+                window.location.replace(response.permalink_update);
+            },
+            onFailure: function(response) {
+                var errorMessage = [];
+
+                $.each(response, function(index, item) {
+                    var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                    
+                    if (Array.isArray(item)) {
+                        errorMessage.push(label + item.join(' '));
+                    } else {
+                        errorMessage.push(label + item);
+                    }
+                });
+
+                if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                // Show error
+                if (errorMessage) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                    });
                 }
             }
         });
 
+        /*
         $(document).on('change', '[name="category"]', function(event) {
             $('.form').form('validate form');
         });
@@ -191,5 +188,6 @@
         $(document).on('keyup', '[name="label"], [name="description"]', function(event) {
             $('.form').form('validate form');
         });
+        */
     </script>
 {% endblock %}

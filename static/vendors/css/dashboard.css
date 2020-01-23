@@ -1,0 +1,17 @@
+.dashboard .chapter-list .stage {
+    flex: 0 0 35px;
+    font-size: 20px;
+}
+
+
+@media (min-width: 577px) {
+    .dashboard .guide-list .control {
+        text-align: right;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard .guide-list .control {
+        margin-top: 10px;
+    }
+}

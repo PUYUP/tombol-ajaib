@@ -1,3 +1,5 @@
+import inspect
+
 from django.db import transaction
 from django.db.models import Value, Case, When, Subquery, OuterRef, Count
 from django.urls import reverse
@@ -24,11 +26,8 @@ ExplainRevision = get_model('beacon', 'ExplainRevision')
 class ExplainSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
     creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
-    explain_uuid = serializers.UUIDField(read_only=True)
-    explain_label = serializers.CharField(read_only=True)
-    explain_version = serializers.CharField(read_only=True)
-    explain_status = serializers.CharField(read_only=True)
-    permalink = serializers.SerializerMethodField(read_only=True)
+    published = serializers.SerializerMethodField(read_only=True)
+    draft = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Explain
@@ -38,12 +37,23 @@ class ExplainSerializer(serializers.ModelSerializer):
             'creator': {'write_only': True}
         }
 
-    def get_permalink(self, obj):
-        reverse_params = {
-            'revision_uuid': obj.explain_uuid
-        }
+    def subquery_attribute(self, obj, identifier=None):
+        data = {}
+        label = getattr(obj, '%s_label' % identifier, None)
 
-        return reverse('explain_revision_detail', kwargs=reverse_params)
+        if label:
+            attributes = inspect.getmembers(obj, lambda a:not(inspect.isroutine(a)))
+
+            for item in attributes:
+                key = item[0]
+                value = item[1]
+        
+                if key.startswith(identifier):
+                    # from this 'identifier_label' to 'label'
+                    key = key.replace('%s_' % identifier, '')
+                    data[key] = value
+            return data
+        return None    
 
     @transaction.atomic
     def create(self, validated_data):
@@ -70,3 +80,9 @@ class ExplainSerializer(serializers.ModelSerializer):
         explain_obj = Explain.objects \
             .annotate(num_revision=Count('explain_revisions'), **explain_params).get(pk=obj.pk)
         return explain_obj
+
+    def get_published(self, obj):
+        return self.subquery_attribute(obj, 'published')
+
+    def get_draft(self, obj):
+        return self.subquery_attribute(obj, 'draft')

@@ -138,36 +138,34 @@ class UserCreationFormExtend(UserCreationForm):
         if commit:
             user.save()
 
-        if user and user is not None:
+        # Create Person
+        person_obj, created = Person.objects.get_or_create(
+            user_id=user.id, defaults={'user_id': user.id})
+
+        if user and person_obj:
             roles_obj = self.cleaned_data['roles']
 
             if roles_obj:
-                try:
-                    person_obj = Person.objects.create(user_id=user.pk)
-                except Person.DoesNotExist:
-                    person_obj = None
+                person_obj.roles.add(*roles_obj)
+                person_obj.save()
 
-                if person_obj is not None:
-                    person_obj.roles.add(*roles_obj)
-                    person_obj.save()
+                # Then set groups to user
+                groups = list()
+                groups_pk = list()
 
-                    # Then set groups to user
-                    groups = list()
-                    groups_pk = list()
+                for item in roles_obj:
+                    group = getattr(item, 'group', None)
+                    if group:
+                        groups.append(group)
+                        groups_pk.append(group.pk)
 
-                    for item in roles_obj:
-                        group = getattr(item, 'group', None)
-                        if group:
-                            groups.append(group)
-                            groups_pk.append(group.pk)
+                if groups:
+                    user.groups.add(*groups)
 
-                    if groups:
-                        user.groups.add(*groups)
-
-                    # Set permissions based on groups
-                    if groups_pk:
-                        permissions = Permission.objects.filter(group__pk__in=groups_pk)
-                        user.user_permissions.add(*permissions)
+                # Set permissions based on groups
+                if groups_pk:
+                    permissions = Permission.objects.filter(group__pk__in=groups_pk)
+                    user.user_permissions.add(*permissions)
         return user
 
 

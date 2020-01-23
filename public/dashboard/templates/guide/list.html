@@ -7,45 +7,33 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container ui main-content">
-        <div class="row justify-content-center">
-            <div class="col-12 col-sm-12 col-md-12 col-lg-12 col-xl-12">
-                <table class="ui celled striped table">
-                    <thead>
-                        <tr>
-                            <th colspan="2">
-                                Panduan Saya
-                            </th>
+    <div class="container ui main-content dashboard">
+        <div class="guide-header d-flex w-100 mb-3">
+            <h1 class="m-0">Panduan Saya</h1>
 
-                            <th colspan="2">
-                                <a href="{% url 'guide_initial' %}" class="ui button mini">
-                                    <i class="add circle icon"></i>
-                                    Panduan
-                                </a>
-                            </th>
-                        </tr>
-                    </thead>
+            <a href="{% url 'dashboard_guide_initial' %}" class="ui button mini ml-auto">
+                <i class="add circle icon"></i>
+                Panduan
+            </a>
+        </div>
 
-                    <tbody>
-                        {% for item in revision_objs %}
-                            <tr>
-                                <td class="text-wrap">
-                                    <p class="mb-0 font-weight-bold">
-                                        <a href="{% url 'dashboard_guide_detail' item.revision_uuid %}">{{ item.revision_label }}</a>
-                                    </p>
-                                    
-                                    {% if item.num_revision > 0 and item.upcoming_uuid %}
-                                        <p class="mt-1 text-muted">
-                                            <i class="icon random"></i>
-                                            <a href="{% url 'guide_revision_editor' item.upcoming_uuid %}">{{ item.upcoming_label }}</a>
-                                            &mdash; ref. {{ item.upcoming_version }}
-                                        </p>
-                                    {% endif %}
-                                </td>
+        <div class="guide-list mb-4">
+            {% for item in revision_objs %}
+                <div class="ui message">
+                    <div class="row">
+                        <div class="col-12 col-sm-9 col-md-10">
+                            <div class="header">
+                                <a href="{% url 'dashboard_guide_detail' item.revision_uuid %}">{{ item.revision_label }}</a>
+                                
+                                <div class="ui label">
+                                    Ref.
+                                    <div class="detail">{{ item.revision_version }}</div>
+                                </div>
+                            </div>
 
-                                <td class="text-wrap">Rev. {{ item.revision_version }}</td>
-
-                                <td class="text-wrap">
+                            <ul class="list">
+                                <li>
+                                    Pembaruan 
                                     {% if item.explain_date_created >= item.chapter_date_created %}
                                         <a href="{% url 'explain_revision_detail' item.explain_uuid %}">
                                             {{ item.explain_date_created }}
@@ -57,43 +45,62 @@
                                     {% else %}
                                         {{ item.date_created }}
                                     {% endif %}
-                                </td>
+                                </li>
 
-                                <td class="text-wrap" style="width:97px">
-                                    <button class="ui icon button red mini">
-                                        <i class="trash icon"></i>
-                                    </button>
+                                {% if item.num_revision > 1 and item.upcoming_uuid %}
+                                    <li>
+                                        Refisi
+                                        <i class="icon random"></i>
+                                        <a href="{% url 'dashboard_guide_detail' item.upcoming_uuid %}">{{ item.upcoming_label }}</a>
+                                        &mdash; ref. {{ item.upcoming_version }}
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
 
-                                    <button type="button" id="update-guide" data-id="1" class="ui icon button blue mini ml-1"
-                                        data-revision-uuid="{{ item.revision_uuid }}" data-uuid="{{ item.uuid }}">
-                                        <i class="pencil icon"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        <div class="col-12 col-sm-3 col-md-2">
+                            <div class="w-100 control">
+                                <button type="button" id="delete-guide" class="ui icon button red mini" data-uuid="{{ item.uuid }}">
+                                    <i class="trash icon"></i>
+                                </button>
 
-                {% proper_paginate request paginator revision_objs 2 %}
-            </div> <!-- /.col -->
-        </div> <!-- /.row -->
+                                <button type="button" id="update-guide" data-id="1" class="ui icon button blue mini ml-1"
+                                    data-revision-uuid="{{ item.revision_uuid }}" data-uuid="{{ item.uuid }}">
+                                    <i class="pencil icon"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% proper_paginate request paginator revision_objs 2 %}
     </div> <!-- /.container -->
 {% endblock %}
 
 {% block css %}
     <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/table.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/menu.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/message.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
+
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/dashboard.css' %}">
 {% endblock %}
 
 {% block js %}
     <script type="text/javascript" src="{% static 'vendors/semantic/components/api.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
 
     <script type="text/javascript">
         $.fn.api.settings.api = {
+            'guides delete'     : '/api/beacon/guides/{uuid}/',
             'guides revisions'  : '/api/beacon/guides-revisions/',
         };
 
+        // ...
+        // Update will redirect to other page
+        // This function only create or get a GuideRevision
+        // ...
         $('#update-guide').api({
             method  : 'POST',
             action  : 'guides revisions',
@@ -108,8 +115,66 @@
                 return settings;
             },
             onSuccess: function(response) {
-                window.location.href = response.permalink;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Permintaan Berhasil',
+                    text: 'Sedang mengalihkan...',
+                    showCloseButton: false,
+                    showCancelButton: false,
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                });
+
+                window.location.href = response.permalink_update;
             }
+        });
+
+        // ...
+        // Delete Guide
+        // And also delete GuideRevision objects
+        // ...
+        $(document).on('click', '#delete-guide', function(event) {
+            Swal.fire({
+                title: 'Konfirmasi',
+                text: "Tindakan ini tidak bisa dikembalikan",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Hapus',
+                cancelButtonText: 'Batal',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.value) {
+                    $(this).api({
+                        method  : 'DELETE',
+                        action  : 'guides delete',
+                        on      : 'now',
+                        beforeXHR: function(xhr) {
+                            xhr.setRequestHeader ('X-CSRFToken', Cookies.get('csrftoken'));
+                            return xhr;
+                        },
+                        onSuccess: function(response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Terhapus!',
+                                text: 'Sedang mengalihkan...',
+                                showCloseButton: false,
+                                showCancelButton: false,
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                            });
+
+                            window.location.reload();
+                        }
+                    });
+                } else if (
+                    /* Read more about handling dismissals below */
+                    result.dismiss === Swal.DismissReason.cancel
+                ) {
+                    // Cancel...
+                }
+            });
         });
     </script>
 {% endblock %}

@@ -1,15 +1,167 @@
 {% extends 'templates/base.html' %}
 {% load static %}
 {% load guide_tab %}
+{% load paginator %}
 
 {% block head %}
 <title>{{ title }}</title>
 {% endblock %}
 
 {% block content %}
-    <div class="container ui main-content">
-        {% guide_tab request guide_revision_uuid identifier %}
+    <div class="container ui main-content dashboard">
+        {% guide_tab %}
+
+        <button type="button" id="add-chapter" class="ui button mini mb-3">
+            <i class="add circle icon"></i>
+            Tambah
+        </button>
+
+        {% if chapter_objs %}
+            {% comment %}
+            <table id="sortable" class="ui celled striped table">
+                <tbody>
+                    {% for item in chapter_objs %}
+                        <tr id="item_{{ item.pk }}" class="item" data-uuid="{{ item.uuid }}">
+                            <td class="text-wrap stage" style="width:35px">
+                                {% if item.stage %}
+                                    {{ item.stage }}
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+
+                            <td class="text-wrap">
+                                <p class="mb-0 font-weight-bold">
+                                    {{ item.chapter_label }}
+                                </p>
+
+                                {% if item.num_revision > 1 and item.upcoming_uuid %}
+                                    <p class="mt-1 text-muted">
+                                        <i class="icon random"></i>
+                                        <a href="{% url 'guide_revision_editor' item.upcoming_uuid %}">{{ item.upcoming_label }}</a>
+                                        &mdash; ref. {{ item.upcoming_version }}
+                                    </p>
+                                {% endif %}
+                            </td>
+
+                            <td class="text-wrap">Ref. {{ item.chapter_version }}</td>
+
+                            <td class="text-wrap">
+                                {{ item.date_created }}
+                            </td>
+
+                            <td class="text-wrap" style="width:97px">
+                                <button class="ui icon button red mini">
+                                    <i class="trash icon"></i>
+                                </button>
+
+                                <button type="button" id="update-guide" data-id="1" class="ui icon button blue mini ml-1"
+                                    data-revision-uuid="{{ item.revision_uuid }}" data-uuid="{{ item.uuid }}">
+                                    <i class="pencil icon"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endcomment %}
+
+            <div class="guide-list chapter-list">
+                {% for item in chapter_objs %}
+                    <div id="item_{{ item.pk }}" class="ui message" data-uuid="{{ item.uuid }}">
+                        <div class="d-flex w-100 align-items-center">
+                            <div class="stage text-center font-weight-bold">
+                                {% if item.stage %}
+                                    {{ item.stage }}
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </div>
+
+                            <div class="pl-3">
+                                <div class="header">
+                                    {{ item.chapter_label }}
+
+                                    <div class="ui label">
+                                        Ref.
+                                        <div class="detail">{{ item.chapter_version }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if paginator %}
+                {% proper_paginate request paginator chapter_objs 2 %}
+            {% endif %}
+        {% else %}
+            <p class="mt-3">Masih kosong</p>
+        {% endif %}
     </div>
+
+    <div class="ui modal small modal-add-chapter">
+        <div class="header">
+            Tambah Bab
+        </div>
+
+        <div class="content">
+            <form class="ui form form-chapter w-100">
+                <div class="field">
+                    <label>Nama</label>
+
+                    <div class="ui left icon input">
+                        <i class="clipboard outline icon"></i>
+                        <input name="label" type="text" required>
+                    </div>
+                </div>
+
+                <div class="grouped fields">
+                    <label>Status</label>
+
+                    <div class="row m-0">
+                        {% for item in status_choices %}
+                            <div class="field col-12 col-sm-6">
+                                <div class="ui radio checkbox">
+                                    <input type="radio" name="status" value="{{ item.0 }}" required>
+                                    <label>{{ item.1 }}</label>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span></label>
+
+                    <div class="ui input">
+                        <textarea name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Changelog</label>
+
+                    <div class="ui input">
+                        <textarea name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
+                    </div>
+                </div>
+
+                <div class="ui error message"></div>
+                <input type="hidden" name="guide" value="{{ guide_revision_obj.guide.id }}">
+
+                <div class="mt-4 d-flex w-100">
+                    <div id="cancel" class="ui button close mr-auto cancel">Batal</div>
+
+                    <div id="submit-chapter" class="ui button primary submit mr-0">
+                        <i class="check icon"></i>
+                        Simpan
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div> <!-- /.modal add chapter -->
 {% endblock %}
 
 {% block css %}
@@ -23,6 +175,10 @@
     <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/transition.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/tab.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/table.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/message.min.css' %}">
+
+    <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/dashboard.css' %}">
 {% endblock %}
 
 {% block js %}
@@ -34,19 +190,198 @@
     <script type="text/javascript" src="{% static 'vendors/semantic/components/api.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/semantic/components/tab.min.js' %}"></script>
 
+    <script type="text/javascript" src="{% static 'vendors/js/jquery.serialize-object.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'vendors/jquery-ui/jquery-ui.min.js' %}"></script>
 
     <script type="text/javascript">
-        $('.dynamic.example .menu .item')
-        .tab({
-            apiSettings: {
-                url: '{tab}/'
+        $.fn.api.settings.api = {
+            'chapters create'  : '/api/beacon/chapters/',
+        };
+
+        // ...
+        // SORTABLE
+        // ...
+        $sortableElem = $('#sortable');
+        $sortable = $sortableElem.sortable({
+            axis: 'y',
+            containment: 'parent',
+            items: '> tbody > tr',
+            tolerance: 'pointer',
+            cursor: 'move',
+            opacity: 0.7,
+        });
+
+        $sortable.on('sortupdate', function (event, ui) {
+            var data = $(this).sortable('serialize', { key: 'sort' }),
+                dataArray = data.split('&'),
+                dataClean = [];
+
+            $.each(dataArray, function (index, value) {
+                var valueClean = value.replace('sort=', '');
+                dataClean.push(valueClean);
+            });
+
+            sortStage(dataClean);
+
+            var $stagesElem = $sortableElem.find('.stage');
+            $.each($stagesElem, function(key, value) {
+                $(value).html(key + 1);
+            });
+        });
+
+        function sortStage(data) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/beacon/chapters/sort/',
+                headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
+                xhrFields: { withCredentials: true },
+                data: {
+                    sortable: data.join(','),
+                    csrfmiddlewaretoken: Cookies.get('csrftoken'),
+                },
+                success: function (response) {
+
+                }
+            });
+        }
+
+        // ...
+        // FORM
+        // ...
+        function initForm(data = null) {
+            $checkbox = $('.checkbox').checkbox();
+
+            $form = $('.form-chapter').form({
+                on: 'blur',
+                fields: {
+                    label: {
+                        identifier: 'label',
+                        rules: [
+                            {
+                                type: 'empty',
+                                prompt: 'Nama bab tidak boleh kosong'
+                            },
+                            {
+                                type: 'minLength[4]',
+                                prompt: 'Nama bab minimal 4 karakter'
+                            }
+                        ]
+                    },
+                    status: {
+                        identifier: 'status',
+                        rules: [
+                            {
+                                type: 'checked',
+                            }
+                        ]
+                    },
+                    description: {
+                        identifier: 'description',
+                    },
+                    changelog: {
+                        identifier: 'changelog',
+                        rules: [
+                            {
+                                type: 'empty',
+                                prompt: 'Changelog tidak boleh kosong'
+                            }
+                        ]
+                    },
+                }
+            })
+            .api({
+                method: 'POST',
+                action: 'chapters create',
+                serializeForm: true,
+                beforeXHR: function(xhr) {
+                    xhr.setRequestHeader ('X-CSRFToken', Cookies.get('csrftoken'));
+                    return xhr;
+                },
+                onSuccess: function(response) {
+                    /*
+                    if (response.status === 'published') {
+                        window.location.replace(response.permalink);
+                    } else {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Pembaruan berjalan sukses!',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                        });
+                    }
+                    */
+                    console.log(response);
+
+                    var item = `<div id="item_${response.id}" class="ui message" data-uuid="${response.uuid}">
+                        <div class="d-flex w-100 align-items-center">
+                            <div class="stage text-center font-weight-bold">&mdash;</div>
+
+                            <div class="pl-3"> 
+                                <div class="header">
+                                    ${response.label}
+
+                                    <div class="ui label">
+                                        Ref.
+                                        <div class="detail">2</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+
+                    $('.chapter-list').append(item);
+                },
+                onFailure: function(response) {
+                    var errorMessage = [];
+
+                    $.each(response, function(index, item) {
+                        var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                        
+                        if (Array.isArray(item)) {
+                            errorMessage.push(label + item.join(' '));
+                        } else {
+                            errorMessage.push(label + item);
+                        }
+                    });
+
+                    if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                    // Show error
+                    if (errorMessage) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Oops...',
+                            html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                        });
+                    }
+                }
+            });
+        }
+
+        $(document).on('click', '#add-chapter', function (event) {
+            event.preventDefault();
+            $('.modal-add-chapter').modal('show');
+        });
+
+        $('.modal-add-chapter').modal({
+            autofocus: false,
+            closable: false,
+            onShow: function() {
+                initForm();
             },
-            evaluateScripts : 'once',
-            context : 'parent',
-            auto : false,
-            path: '/'
+            onHide: function($element) {
+            
+            }
+        });
+
+        // ...
+        // CLOSE MODAL
+        // ...
+        $(document).on('click', '#cancel', function(event) {
+            event.preventDefault();
+            $('.modal').modal('hide');
         });
     </script>
 {% endblock %}

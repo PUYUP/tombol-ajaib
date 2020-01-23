@@ -11,6 +11,13 @@ REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
 """
 
 
+# Django Email
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/2.2/topics/email/
+EMAIL_HOST_USER = 'app158376769@heroku.com'
+EMAIL_HOST_PASSWORD = '0wdszzcm9573'
+
+
 # Django Sessions
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/2.2/ref/settings/
