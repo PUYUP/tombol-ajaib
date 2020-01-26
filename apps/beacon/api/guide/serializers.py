@@ -1,3 +1,5 @@
+import inspect
+
 from django.db import transaction
 from django.urls import reverse
 
@@ -28,7 +30,7 @@ class GuideSerializer(serializers.ModelSerializer):
 
     def get_permalink_update(self, obj):
         revision = obj.guide_revisions.all().first()
-        return reverse('dashboard_guide_detail', kwargs={'guide_revision_uuid': revision.uuid})
+        return reverse('dashboard_guide_detail', kwargs={'guide_uuid': revision.uuid})
 
     @transaction.atomic
     def create(self, validated_data):
@@ -46,22 +48,33 @@ class GuideSerializer(serializers.ModelSerializer):
 
 
 class GuideListSerializer(serializers.ModelSerializer):
-    permalink = serializers.SerializerMethodField(read_only=True)
-    last_updated = serializers.SerializerMethodField(read_only=True)
+    published = serializers.SerializerMethodField(read_only=True)
+    draft = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Guide
         fields = '__all__'
 
-    def get_permalink(self, obj):
-        return reverse('guide_revision_detail', kwargs={'revision_uuid': obj.revision_uuid})
+    def subquery_attribute(self, obj, identifier=None):
+        data = {}
+        label = getattr(obj, '%s_label' % identifier, None)
 
-    def get_last_updated(self, obj):
-        if obj.explain_date_created and obj.chapter_date_created:
-            if obj.explain_date_created >= obj.chapter_date_created:
-                return obj.explain_date_created
-            elif obj.explain_date_created <= obj.chapter_date_created:
-                return obj.chapter_date_created
-            else:
-                return obj.date_created
-        return obj.date_created
+        if label:
+            attributes = inspect.getmembers(obj, lambda a:not(inspect.isroutine(a)))
+
+            for item in attributes:
+                key = item[0]
+                value = item[1]
+        
+                if key.startswith(identifier):
+                    # from this 'identifier_label' to 'label'
+                    key = key.replace('%s_' % identifier, '')
+                    data[key] = value
+            return data
+        return None
+
+    def get_published(self, obj):
+        return self.subquery_attribute(obj, 'published')
+
+    def get_draft(self, obj):
+        return self.subquery_attribute(obj, 'draft')

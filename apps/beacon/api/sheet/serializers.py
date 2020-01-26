@@ -19,17 +19,16 @@ from apps.beacon.utils.constant import (
 from apps.person.utils.auths import CurrentPersonDefault
 
 Guide = get_model('beacon', 'Guide')
-Explain = get_model('beacon', 'Explain')
-ExplainRevision = get_model('beacon', 'ExplainRevision')
+Sheet = get_model('beacon', 'Sheet')
+SheetRevision = get_model('beacon', 'SheetRevision')
 
 
-class ExplainSerializer(serializers.ModelSerializer):
-    chapter_uuid = serializers.UUIDField(source='chapter.uuid', read_only=True)
+class SheetSerializer(serializers.ModelSerializer):
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
-        model = Explain
+        model = Sheet
         fields = '__all__'
         read_only_fields = ('uuid',)
         extra_kwargs = {
@@ -63,22 +62,22 @@ class ExplainSerializer(serializers.ModelSerializer):
 
         # Append request to objects
         if request:
-            setattr(Explain, 'request', request)
+            setattr(Sheet, 'request', request)
 
-        explain_params = dict()
-        explain_fields = ('pk', 'uuid', 'label', 'version', 'status')
-        explain_revisions = ExplainRevision.objects.filter(explain__pk=OuterRef('pk'))
+        sheet_params = dict()
+        sheet_fields = ('pk', 'uuid', 'label', 'version', 'status')
+        sheet_revisions = SheetRevision.objects.filter(sheet__pk=OuterRef('pk'))
 
-        for item in explain_fields:
-            explain_params['explain_%s' % item] = Case(
-                When(num_revision=1, then=Subquery(explain_revisions.values(item)[:1])),
-                default=Subquery(explain_revisions.filter(status=PUBLISHED).values(item)[:1])
+        for item in sheet_fields:
+            sheet_params['sheet_%s' % item] = Case(
+                When(num_revision=1, then=Subquery(sheet_revisions.values(item)[:1])),
+                default=Subquery(sheet_revisions.filter(status=PUBLISHED).values(item)[:1])
             )
 
-        obj = Explain.objects.create(**validated_data)
-        explain_obj = Explain.objects \
-            .annotate(num_revision=Count('explain_revisions'), **explain_params).get(pk=obj.pk)
-        return explain_obj
+        obj = Sheet.objects.create(**validated_data)
+        sheet_obj = Sheet.objects \
+            .annotate(num_revision=Count('sheet_revisions'), **sheet_params).get(pk=obj.pk)
+        return sheet_obj
 
     def get_published(self, obj):
         return self.subquery_attribute(obj, 'published')

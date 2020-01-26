@@ -100,7 +100,7 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         return reverse('guide_revision_detail', kwargs={'revision_uuid': obj.uuid})
 
     def get_permalink_update(self, obj):
-        return reverse('dashboard_guide_detail', kwargs={'guide_revision_uuid': obj.uuid})
+        return reverse('dashboard_guide_detail', kwargs={'guide_uuid': obj.uuid})
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):

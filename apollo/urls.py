@@ -4,14 +4,14 @@ from django.contrib import admin
 from django.urls import path, include
 
 # URL's
-from api import routers
+from api import routers as api_routers
 from public import urls as core_urls
 from public.person import urls as person_urls
 from apps.beacon.public.urls import guide_urls, explain_urls, chapter_urls
 
 urlpatterns = [
     path('', include(core_urls)),
-    path('api/', include(routers)),
+    path('api/', include(api_routers)),
     path('person/', include(person_urls)),
     path('guide/', include(guide_urls)),
     path('explain/', include(explain_urls)),

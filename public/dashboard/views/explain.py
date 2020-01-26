@@ -27,11 +27,11 @@ class ExplainListDashbordView(View):
     template_name = 'dashboard/templates/explain/list.html'
     context = dict()
 
-    def get(self, request, guide_revision_uuid=None):
-        guide_revision_uuid = check_uuid(uid=guide_revision_uuid)
-        if not guide_revision_uuid:
+    def get(self, request, guide_uuid=None):
+        guide_uuid = check_uuid(uid=guide_uuid)
+        if not guide_uuid:
             raise Http404(_("Tidak ditemukan."))
 
         self.context['identifier'] = 'explain'
-        self.context['guide_revision_uuid'] = guide_revision_uuid
+        self.context['guide_uuid'] = guide_uuid
         return render(request, self.template_name, self.context)

@@ -4,6 +4,7 @@ import uuid
 from django.apps import apps
 from django.apps.config import MODELS_MODULE_NAME
 from django.core.exceptions import AppRegistryNotReady, ValidationError
+from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import renderers
 

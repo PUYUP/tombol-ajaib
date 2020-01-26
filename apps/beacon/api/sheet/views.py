@@ -14,7 +14,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, NotAcceptable
 
 # SERIALIZERS
-from .serializers import ExplainSerializer
+from .serializers import SheetSerializer
 
 # PERMISSIONS
 from apps.beacon.utils.permissions import IsAllowCrudObject
@@ -26,11 +26,11 @@ from utils.generals import get_model, check_uuid
 from apps.beacon.utils.constant import (
     DRAFT, PUBLISHED, STATUS_CHOICES)
 
-Explain = get_model('beacon', 'Explain')
-ExplainRevision = get_model('beacon', 'ExplainRevision')
+Sheet = get_model('beacon', 'Sheet')
+SheetRevision = get_model('beacon', 'SheetRevision')
 
 
-class ExplainApiView(viewsets.ViewSet):
+class SheetApiView(viewsets.ViewSet):
     """ Get attribute options for persons
     Read only... """
     lookup_field = 'uuid'
@@ -55,19 +55,17 @@ class ExplainApiView(viewsets.ViewSet):
             return [permission() for permission in self.permission_classes]
 
     def list(self, request, format=None):
-        """ Can use 'guide_uuid' or 'chapter_uuid' """
+        """ Can use 'guide_uuid' """
         context = {'request': self.request}
         params = request.query_params
         person_pk = request.person_pk
-        guide_uuid = params.get('guide_uuid', None)
-        chapter_uuid = params.get('chapter_uuid', None)
         person_uuid = params.get('person_uuid', None)
 
+        guide_uuid = params.get('guide_uuid', None)
         guide_uuid = check_uuid(uid=guide_uuid)
-        chapter_uuid = check_uuid(uid=chapter_uuid)
 
-        if not chapter_uuid and not guide_uuid:
-            raise NotAcceptable(detail=_("UUID invalid."))
+        if not guide_uuid:
+            raise NotAcceptable(detail=_("Guide UUID invalid."))
 
         # Person UUID defined
         if person_uuid:
@@ -77,9 +75,9 @@ class ExplainApiView(viewsets.ViewSet):
                 raise NotAcceptable(detail=_("Person UUID invalid."))
 
         # ...
-        # ExplainRevision objects in Subquery
+        # SheetRevision objects in Subquery
         # ...
-        revision_objs = ExplainRevision.objects.filter(explain_id=OuterRef('id'))
+        revision_objs = SheetRevision.objects.filter(sheet_id=OuterRef('id'))
         revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
 
         # ...
@@ -95,15 +93,12 @@ class ExplainApiView(viewsets.ViewSet):
             published_fields['published_%s' % item] = Subquery(
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
-        queryset = Explain.objects \
-            .prefetch_related(Prefetch('creator'), Prefetch('creator__user'),
-                              Prefetch('chapter'), Prefetch('guide')) \
-            .select_related('creator', 'creator__user', 'chapter', 'guide') \
-            .filter(
-                Q(chapter__uuid=chapter_uuid) | Q(chapter__chapter_revisions__uuid=chapter_uuid)
-                | Q(guide__uuid=guide_uuid) | Q(guide__guide_revisions__uuid=guide_uuid)) \
+        queryset = Sheet.objects \
+            .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
+            .select_related('creator', 'creator__user', 'guide') \
+            .filter(Q(guide__uuid=guide_uuid) | Q(guide__guide_revisions__uuid=guide_uuid)) \
             .annotate(
-                num_revision=Count('explain_revisions', distinct=True),
+                num_revision=Count('sheet_revisions', distinct=True),
                 sort_stage=Case(
                     When(stage__isnull=False, then=F('stage')),
                     default=99999
@@ -119,14 +114,14 @@ class ExplainApiView(viewsets.ViewSet):
         if not queryset.exists():
             raise NotFound(_("Not found."))
 
-        serializer = ExplainSerializer(queryset, many=True, context=context)
+        serializer = SheetSerializer(queryset, many=True, context=context)
         return Response(serializer.data, status=response_status.HTTP_200_OK)
 
     @method_decorator(never_cache)
     @transaction.atomic
     def create(self, request, format=None):
         context = {'request': self.request}
-        serializer = ExplainSerializer(data=request.data, context=context)
+        serializer = SheetSerializer(data=request.data, context=context)
 
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -143,7 +138,7 @@ class ExplainApiView(viewsets.ViewSet):
             raise NotFound()
 
         person = request.person
-        queryset = Explain.objects.filter(uuid=uuid, creator=person)
+        queryset = Sheet.objects.filter(uuid=uuid, creator=person)
 
         if queryset.exists():
             queryset.delete()
@@ -163,17 +158,17 @@ class ExplainApiView(viewsets.ViewSet):
         sortable = request.data.get('sortable', None)
         sortable_list = sortable.split(',')
 
-        explain_list = list()
-        explain_objs = Explain.objects.filter(
+        sheet_list = list()
+        sheet_objs = Sheet.objects.filter(
             pk__in=sortable_list, creator=person)
 
-        if explain_objs.exists() and sortable_list:
+        if sheet_objs.exists() and sortable_list:
             for index, item in enumerate(sortable_list, start=1):
                 if item:
-                    explain_obj = explain_objs.get(pk=item)
-                    setattr(explain_obj, 'stage', index)
-                    explain_list.append(explain_obj)
+                    sheet_obj = sheet_objs.get(pk=item)
+                    setattr(sheet_obj, 'stage', index)
+                    sheet_list.append(sheet_obj)
 
-            Explain.objects.bulk_update(explain_list, ['stage'])
+            Sheet.objects.bulk_update(sheet_list, ['stage'])
             return Response(status=response_status.HTTP_200_OK)
         raise NotFound()

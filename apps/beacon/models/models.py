@@ -122,3 +122,21 @@ if not is_model_registered('beacon', 'ChapterRevision'):
             db_table = 'guides_chapter_revision'
 
     __all__.append('ChapterRevision')
+
+
+# 14
+if not is_model_registered('beacon', 'Sheet'):
+    class Sheet(AbstractSheet):
+        class Meta(AbstractSheet.Meta):
+            db_table = 'guides_sheet'
+
+    __all__.append('Sheet')
+
+
+# 15
+if not is_model_registered('beacon', 'SheetRevision'):
+    class SheetRevision(AbstractSheetRevision):
+        class Meta(AbstractSheetRevision.Meta):
+            db_table = 'guides_sheet_revision'
+
+    __all__.append('SheetRevision')

@@ -142,11 +142,11 @@ class GuideDetailDashbordView(View):
     template_name = 'dashboard/templates/guide/detail.html'
     context = dict()
 
-    def get(self, request, guide_revision_uuid=None):
+    def get(self, request, guide_uuid=None):
         person = request.person
         person_pk = getattr(person, 'pk', None)
 
-        uuid = check_uuid(uid=guide_revision_uuid)
+        uuid = check_uuid(uid=guide_uuid)
         if not uuid:
             raise Http404(_("Tidak ditemukan."))
 
@@ -164,7 +164,7 @@ class GuideDetailDashbordView(View):
 
         self.context['identifier'] = 'guide'
         self.context['title'] = guide_revision_obj.label
-        self.context['guide_revision_uuid'] = guide_revision_uuid
+        self.context['guide_uuid'] = guide_uuid
         self.context['guide_revision_obj'] = guide_revision_obj
         self.context['DRAFT'] = DRAFT
         self.context['ARCHIVE'] = ARCHIVE

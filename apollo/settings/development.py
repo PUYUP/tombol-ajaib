@@ -33,9 +33,7 @@ SESSION_COOKIE_SECURE = False
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = [
-    'http://localhost:4000',
-    'http://localhost:4200',
-    'http://localhost:8100',
+    'http://localhost:3000',
 ]
 
 
@@ -46,8 +44,7 @@ CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = [
-    'localhost:4200',
-    'localhost:8100',
+    'localhost:3000',
 ]
 
 

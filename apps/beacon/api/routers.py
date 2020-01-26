@@ -10,6 +10,7 @@ from .chapter.views import ChapterApiView
 from .chapter_revision.views import ChapterRevisionApiView
 from .explain.views import ExplainApiView
 from .explain_revision.views import ExplainRevisionApiView
+from .sheet.views import SheetApiView
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -20,6 +21,7 @@ router.register('chapters', ChapterApiView, basename='chapter')
 router.register('chapters-revisions', ChapterRevisionApiView, basename='chapter_revision')
 router.register('explains', ExplainApiView, basename='explain')
 router.register('explains-revisions', ExplainRevisionApiView, basename='explain_revision')
+router.register('sheets', SheetApiView, basename='sheet')
 
 app_name = 'beacon'
 

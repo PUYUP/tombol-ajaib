@@ -39,5 +39,8 @@ class RootApiView(APIView):
                 'explains-revisions': reverse('beacons:beacon:explain_revision-list',
                                               request=request, format=format,
                                               current_app='beacon'),
+                'sheets': reverse('beacons:beacon:sheet-list',
+                                  request=request, format=format,
+                                  current_app='beacon'),
             },
         })

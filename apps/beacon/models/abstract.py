@@ -146,3 +146,37 @@ class AbstractExplain(models.Model):
         if revision:
             return revision.label
         return self.label
+
+
+# 3
+class AbstractSheet(models.Model):
+    """Each this object created Sheet created to
+    This object only handle for store non-editable by creator"""
+    creator = models.ForeignKey(
+        'person.Person', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='sheets')
+    guide = models.ForeignKey(
+        'beacon.Guide',
+        on_delete=models.CASCADE,
+        related_name='sheets',
+        null=True, blank=True)
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=255, null=True)
+    stage = models.BigIntegerField(null=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
+
+    # Generic relations
+    votes = GenericRelation('beacon.Vote')
+    ratings = GenericRelation('beacon.Rating')
+
+    class Meta:
+        abstract = True
+        app_label = 'beacon'
+        verbose_name = _("Sheet")
+        verbose_name_plural = _("Sheets")
+
+    def __str__(self):
+        return self.label

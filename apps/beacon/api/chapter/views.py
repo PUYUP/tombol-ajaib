@@ -57,36 +57,40 @@ class ChapterApiView(viewsets.ViewSet):
 
     def list(self, request, format=None):
         context = {'request': self.request}
-        person_pk = request.person_pk
         params = request.query_params
+        person_pk = request.person_pk
         guide_uuid = params.get('guide_uuid', None)
+        person_uuid = params.get('person_uuid', None)
 
         guide_uuid = check_uuid(uid=guide_uuid)
         if not guide_uuid:
             raise NotAcceptable(detail=_("Guide UUID invalid."))
 
-        # ...
-        # Annotate Published ChapterRevision
-        # ...
-        published_params = dict()
-        published_fields = ('uuid', 'label', 'version', 'status', 'date_created')
-        published_revisions = ChapterRevision.objects \
-            .filter(chapter_id=OuterRef('id'), status=PUBLISHED)
+        # Person UUID defined
+        if person_uuid:
+            person_uuid = check_uuid(uid=person_uuid)
 
-        for item in published_fields:
-            published_params['published_%s' % item] = Subquery(published_revisions.values(item)[:1])
+            if not person_uuid:
+                raise NotAcceptable(detail=_("Person UUID invalid."))
 
         # ...
-        # Annotate Draft ChapterRevision
+        # ChapterRevision objects in Subquery
         # ...
-        draft_fields = ('uuid', 'label', 'version', 'status')
-        draft_params = dict()
-        draft_revisions = ChapterRevision.objects \
-            .filter(chapter_id=OuterRef('id'), status=DRAFT) \
-            .order_by('-version')
+        revision_objs = ChapterRevision.objects.filter(chapter_id=OuterRef('id'))
+        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
 
-        for item in draft_fields:
-            draft_params['draft_%s' % item] = Subquery(draft_revisions.values(item)[:1])
+        # ...
+        # Collection fro Annotate
+        # ...
+        draft_fields = dict()
+        published_fields = dict()
+
+        for item in revision_fields:
+            draft_fields['draft_%s' % item] = Subquery(
+                revision_objs.filter(status=DRAFT).order_by('-version').values(item)[:1])
+
+            published_fields['published_%s' % item] = Subquery(
+                revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
         queryset = Chapter.objects \
             .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
@@ -98,10 +102,13 @@ class ChapterApiView(viewsets.ViewSet):
                 sort_stage=Case(
                     When(stage__isnull=False, then=F('stage')),
                     default=99999),
-                **published_params,
-                **draft_params) \
+                **draft_fields,
+                **published_fields) \
             .order_by('sort_stage') \
             .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
+
+        if person_uuid:
+            queryset = queryset.filter(creator__uuid=person_uuid)
 
         if not queryset.exists():
             raise NotFound(_("Not found."))

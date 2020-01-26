@@ -16,89 +16,44 @@
             Tambah
         </button>
 
-        {% if chapter_objs %}
-            {% comment %}
-            <table id="sortable" class="ui celled striped table">
-                <tbody>
+        {% comment %}
+            {% if chapter_objs %}
+                <div class="guide-list chapter-list">
                     {% for item in chapter_objs %}
-                        <tr id="item_{{ item.pk }}" class="item" data-uuid="{{ item.uuid }}">
-                            <td class="text-wrap stage" style="width:35px">
-                                {% if item.stage %}
-                                    {{ item.stage }}
-                                {% else %}
-                                    &mdash;
-                                {% endif %}
-                            </td>
+                        <div id="item_{{ item.pk }}" class="ui message" data-uuid="{{ item.uuid }}">
+                            <div class="d-flex w-100 align-items-center">
+                                <div class="stage text-center font-weight-bold">
+                                    {% if item.stage %}
+                                        {{ item.stage }}
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </div>
 
-                            <td class="text-wrap">
-                                <p class="mb-0 font-weight-bold">
-                                    {{ item.chapter_label }}
-                                </p>
+                                <div class="pl-3">
+                                    <div class="header">
+                                        {{ item.chapter_label }}
 
-                                {% if item.num_revision > 1 and item.upcoming_uuid %}
-                                    <p class="mt-1 text-muted">
-                                        <i class="icon random"></i>
-                                        <a href="{% url 'guide_revision_editor' item.upcoming_uuid %}">{{ item.upcoming_label }}</a>
-                                        &mdash; ref. {{ item.upcoming_version }}
-                                    </p>
-                                {% endif %}
-                            </td>
-
-                            <td class="text-wrap">Ref. {{ item.chapter_version }}</td>
-
-                            <td class="text-wrap">
-                                {{ item.date_created }}
-                            </td>
-
-                            <td class="text-wrap" style="width:97px">
-                                <button class="ui icon button red mini">
-                                    <i class="trash icon"></i>
-                                </button>
-
-                                <button type="button" id="update-guide" data-id="1" class="ui icon button blue mini ml-1"
-                                    data-revision-uuid="{{ item.revision_uuid }}" data-uuid="{{ item.uuid }}">
-                                    <i class="pencil icon"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% endcomment %}
-
-            <div class="guide-list chapter-list">
-                {% for item in chapter_objs %}
-                    <div id="item_{{ item.pk }}" class="ui message" data-uuid="{{ item.uuid }}">
-                        <div class="d-flex w-100 align-items-center">
-                            <div class="stage text-center font-weight-bold">
-                                {% if item.stage %}
-                                    {{ item.stage }}
-                                {% else %}
-                                    &mdash;
-                                {% endif %}
-                            </div>
-
-                            <div class="pl-3">
-                                <div class="header">
-                                    {{ item.chapter_label }}
-
-                                    <div class="ui label">
-                                        Ref.
-                                        <div class="detail">{{ item.chapter_version }}</div>
+                                        <div class="ui label">
+                                            Ref.
+                                            <div class="detail">{{ item.chapter_version }}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                {% endfor %}
-            </div>
+                    {% endfor %}
+                </div>
 
-            {% if paginator %}
-                {% proper_paginate request paginator chapter_objs 2 %}
+                {% if paginator %}
+                    {% proper_paginate request paginator chapter_objs 2 %}
+                {% endif %}
+            {% else %}
+                <p class="mt-3">Masih kosong</p>
             {% endif %}
-        {% else %}
-            <p class="mt-3">Masih kosong</p>
-        {% endif %}
+        {% endcomment %}
+
+        <div class="guide-list chapter-list"></div>
     </div>
 
     <div class="ui modal small modal-add-chapter">
@@ -196,8 +151,54 @@
 
     <script type="text/javascript">
         $.fn.api.settings.api = {
-            'chapters create'  : '/api/beacon/chapters/',
+            'chapters create'   : '/api/beacon/chapters/',
         };
+    
+        function loadChapters() {
+            $.when(
+                $.ajax('/api/beacon/chapters/?guide_uuid={{ guide_revision_uuid }}&person_uuid={{ request.person_uuid }}'),
+                $.ajax('/api/beacon/explains/?guide_uuid={{ guide_revision_uuid }}&person_uuid={{ request.person_uuid }}'))
+            .done(function(chapterRes, explainRes) {
+                var combineChapterExplain = [],
+                    chapterItem = '',
+                    chapters = chapterRes[0],
+                    explains = explainRes[0];
+        
+                $.each(chapters, function(index, value) {
+                    var explainFiltered = explains.filter(function(x) {
+                        return x.chapter_uuid === value.uuid;
+                    });
+
+                    value.explains = explainFiltered;
+                    combineChapterExplain.push(value);
+                });
+
+                $.each(combineChapterExplain, function(index, value) {
+                    chapterItem += `<div id="item_${value.id}" class="ui message" data-uuid="${value.uuid}">
+                        <div class="d-flex w-100 align-items-center">
+                            <div class="stage text-center font-weight-bold">
+                                ${value.stage ? value.stage : '&mdash;'}
+                            </div>
+
+                            <div class="pl-3">
+                                <div class="header">
+                                    ${value.published ? value.published.label : value.label}
+
+                                    <div class="ui label">
+                                        Ref.
+                                        <div class="detail">${value.published ? value.published.version : value.draft.version}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+
+                if (chapterItem) $('.chapter-list').html(chapterItem);
+            });
+        }
+
+        loadChapters();
 
         // ...
         // SORTABLE

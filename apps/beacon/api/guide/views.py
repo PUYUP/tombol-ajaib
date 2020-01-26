@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import (
-    Count, OuterRef, Subquery, Case, When, Prefetch)
+    Count, OuterRef, Subquery, Case, When, Prefetch, Q)
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 
@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status as response_status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, NotAcceptable
 from rest_framework.pagination import PageNumberPagination
 
 # SERIALIZERS
@@ -61,66 +61,36 @@ class GuideApiView(viewsets.ViewSet):
 
     def list(self, request, format=None):
         context = {'request': self.request}
+        params = request.query_params
+
         person_pk = request.person_pk
+        person_uuid = params.get('person_uuid', None)
+
+        # Person UUID defined
+        if person_uuid:
+            person_uuid = check_uuid(uid=person_uuid)
+
+            if not person_uuid:
+                raise NotAcceptable(detail=_("Person UUID invalid."))
 
         # ...
-        # Get last ExplainRevision
+        # GudeRevision objects in Subquery
         # ...
-        explain_params = dict()
-        explain_fields = ('uuid', 'date_created')
-        explain_revisions = ExplainRevision.objects \
-            .filter(explain__guide__pk=OuterRef('pk')) \
-            .order_by('-date_updated')
-
-        for item in explain_fields:
-            explain_params['explain_%s' % item] = Case(
-                When(num_explain=1, then=Subquery(explain_revisions.values(item)[:1])),
-                default=Subquery(explain_revisions.filter(status=PUBLISHED).values(item)[:1])
-            )
+        revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
+        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
 
         # ...
-        # Get last ChapterRevision
+        # Collection fro Annotate
         # ...
-        chapter_params = dict()
-        chapter_fields = ('uuid', 'date_created')
-        chapter_revisions = ChapterRevision.objects \
-            .filter(chapter__guide__pk=OuterRef('pk')) \
-            .order_by('-date_updated')
-
-        for item in chapter_fields:
-            chapter_params['chapter_%s' % item] = Case(
-                When(num_chapter=1, then=Subquery(chapter_revisions.values(item)[:1])),
-                default=Subquery(chapter_revisions.filter(status=PUBLISHED).values(item)[:1])
-            )
-
-        # ...
-        # Get last GuideRevision
-        # ...
-        revision_fields = ('uuid', 'label', 'version')
-        revision_params = dict()
-        revisions = GuideRevision.objects.filter(guide__pk=OuterRef('pk'))
+        draft_fields = dict()
+        published_fields = dict()
 
         for item in revision_fields:
-            revision_params['revision_%s' % item] = Case(
-                When(num_revision=1, then=Subquery(revisions.values(item)[:1])),
-                default=Subquery(revisions.filter(status=PUBLISHED).values(item)[:1])
-            )
+            draft_fields['draft_%s' % item] = Subquery(
+                revision_objs.filter(status=DRAFT).order_by('-version').values(item)[:1])
 
-        # ...
-        # Upcoming GuideRevision
-        # Get last DRAFT
-        # ...
-        upcoming_fields = ('uuid', 'label', 'version')
-        upcoming_params = dict()
-        upcomings = GuideRevision.objects \
-            .filter(guide__pk=OuterRef('pk')) \
-            .order_by('-version')
-
-        for item in upcoming_fields:
-            upcoming_params['upcoming_%s' % item] = Case(
-                When(num_revision=1, then=Subquery(upcomings.values(item)[:1])),
-                default=Subquery(upcomings.filter(status=DRAFT).values(item)[:1])
-            )
+            published_fields['published_%s' % item] = Subquery(
+                revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
         # ...
         # Run query
@@ -128,19 +98,54 @@ class GuideApiView(viewsets.ViewSet):
         queryset = Guide.objects \
             .prefetch_related(Prefetch('creator'), Prefetch('creator__user')) \
             .select_related('creator', 'creator__user') \
-            .filter(creator__pk=person_pk) \
             .annotate(
                 num_revision=Count('guide_revisions', distinct=True),
                 num_explain=Count('explains', distinct=True),
                 num_chapter=Count('chapters', distinct=True),
-                **revision_params,
-                **upcoming_params,
-                **chapter_params,
-                **explain_params)
+                **draft_fields,
+                **published_fields) \
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
+
+        if person_uuid:
+            queryset = queryset.filter(creator__uuid=person_uuid)
+
+        if not queryset.exists():
+            raise NotFound(_("Not found."))
 
         queryset_paginate = PAGINATOR.paginate_queryset(queryset, request)
         serializer = GuideListSerializer(queryset_paginate, many=True, context=context)
-        return Response(serializer.data, status=response_status.HTTP_200_OK)
+
+        response = {
+            'count': PAGINATOR.page.paginator.count,
+            'navigate': {
+                'previous': PAGINATOR.get_previous_link(),
+                'next': PAGINATOR.get_next_link()
+            },
+            'results': serializer.data
+        }
+
+        return Response(response, status=response_status.HTTP_200_OK)
+
+    # Return a response
+    def get_response(self, serializer, serializer_parent=None, *args, **kwargs):
+        """ Output to endpoint """
+        response = dict()
+        limit = kwargs.get('limit', None)
+
+        if serializer.data and limit:
+            response['count'] = int(limit)
+
+        if not limit:
+            if serializer_parent is not None:
+                response['media'] = serializer_parent.data
+
+            response['count'] = PAGINATOR.page.paginator.count
+            response['navigate'] = {
+                'previous': PAGINATOR.get_previous_link(),
+                'next': PAGINATOR.get_next_link()
+            }
+        response['results'] = serializer.data
+        return Response(response, status=response_status.HTTP_200_OK)
 
     @method_decorator(never_cache)
     @transaction.atomic
