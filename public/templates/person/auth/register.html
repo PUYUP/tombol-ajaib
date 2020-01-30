@@ -1,0 +1,160 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>Mendaftar</title>
+{% endblock %}
+
+{% block content %}
+    <div class="ui container main-content">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+                <div class="card w-100 mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Buat Sebuah Akun</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            Punya akun? 
+                            <a href="{% url 'login' %}" class="ui basic button tiny grey">
+                                Masuk
+                            </a>
+                        </h6>
+
+                        <form class="border-top pt-2 mt-3">
+                            <div class="form-group">
+                                <label for="username">Nama Pengguna</label>
+                                <input type="text" id="username" class="form-control" name="username" required />
+                            </div> <!-- /.form group -->
+
+                            <div class="form-group">
+                                <label for="email">Email Aktif</label>
+                                <input type="email" id="email" class="form-control" name="email" required />
+                            </div> <!-- /.form group -->
+
+                            <div class="form-group">
+                                <label for="password1">Kata Sandi</label>
+                                <input type="password" id="password1" class="form-control" name="password1" autocomplete="false" required />
+                            </div> <!-- /.form group -->
+
+                            <div class="form-group">
+                                <label for="password2">Ulangi Kata Sandi</label>
+                                <input type="password" id="password2" class="form-control" name="password2" autocomplete="false" required />
+                            </div> <!-- /.form group -->
+
+                            <div class="pt-2">
+                                <button type="submit" class="btn btn-info pl-4 pr-4 mr-auto d-flex align-items-center">
+                                    <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                        <span class="sr-only">Loading...</span>
+                                    </div>
+
+                                    Buat Akun
+                                </button>
+                            </div> <!-- /.flex -->
+                        </form>
+                    </div> <!-- /.card body -->
+                </div> <!-- /.card -->
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+    <script type="text/javascript">
+        $('form').submit(function(event) {
+            event.preventDefault();
+
+            var formValuesObj = getFormValues($(this));
+            var saveValuesObj = {};
+
+            $.each(formValuesObj, function(i, v) {
+                saveValuesObj[i] = v.value;
+            });
+
+            submitHandler($(this), saveValuesObj);
+
+            $(this).find('button').prop('disabled', true);
+            $(this).find('button').find('.spinner').removeClass('d-none');
+        });
+
+        // ...
+        // REGISTER HANDLER
+        // ...
+        function submitHandler($element=null, $data) {
+            // Add password
+            $data.password = $data.password2;
+
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/persons/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$data
+                },
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Mendaftar',
+                        text: 'Sedang mengalihkan...',
+                        showCloseButton: false,
+                        showCancelButton: false,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+                    
+                    // After register, make user logged in
+                    var loginData = {
+                        'username': $data.username,
+                        'password': $data.password,
+                    }
+
+                    $.post('/api/person/token/', loginData, function(data) {
+                        var auth_code = data.auth_code;
+                        var token_data = {
+                            [auth_code]: data[auth_code],
+                        }
+
+                        // Set cookie token
+                        Cookies.set(auth_code, JSON.stringify(token_data));
+                        window.location.replace('/person/validation/');
+                    });
+                },
+                error: function(error) {
+                    $($element).removeClass('loading');
+
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                            
+                            if (Array.isArray(item)) {
+                                errorMessage.push(label + item.join(' '));
+                            } else {
+                                errorMessage.push(label + item);
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $element.find('button').prop('disabled', false);
+                    $element.find('button').find('.spinner').addClass('d-none');
+                }
+            });
+        }
+    </script>
+{% endblock %}

@@ -85,6 +85,10 @@ class AbstractChapterRevision(models.Model):
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
         related_name='chapter_revisions')
+    guide = models.ForeignKey(
+        'beacon.Guide',
+        on_delete=models.CASCADE, null=True, blank=True,
+        related_name='chapter_revisions')
     chapter = models.ForeignKey(
         'beacon.Chapter',
         on_delete=models.CASCADE,
@@ -113,6 +117,7 @@ class AbstractChapterRevision(models.Model):
     def __str__(self):
         return self.label
 
+    
     def save(self, *args, **kwargs):
         model = self._meta.model
 
@@ -136,6 +141,10 @@ class AbstractChapterRevision(models.Model):
         if self.label:
             self.slug = slugify(self.label)
 
+        # Set guide
+        guide_from_chapter = self.chapter.guide
+        self.guide = guide_from_chapter
+
         super().save(*args, **kwargs)
 
 
@@ -146,6 +155,14 @@ class AbstractExplainRevision(models.Model):
     creator = models.ForeignKey(
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
+        related_name='explain_revisions')
+    guide = models.ForeignKey(
+        'beacon.Guide',
+        on_delete=models.CASCADE, null=True, blank=True,
+        related_name='explain_revisions')
+    chapter = models.ForeignKey(
+        'beacon.Chapter',
+        on_delete=models.CASCADE, null=True, blank=True,
         related_name='explain_revisions')
     explain = models.ForeignKey(
         'beacon.Explain',
@@ -202,6 +219,14 @@ class AbstractExplainRevision(models.Model):
         # Auto create slug from label
         if self.label:
             self.slug = slugify(self.label)
+
+        # Set guide
+        guide_from_explain = self.explain.guide
+        self.guide = guide_from_explain
+
+        # Set chapter
+        chapter_from_explain = self.explain.chapter
+        self.chapter = chapter_from_explain
 
         super().save(*args, **kwargs)
 

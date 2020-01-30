@@ -1,0 +1,206 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container ui main-content">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+                 <div class="card w-100 mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Lengkapi Profil</h5>
+
+                        <form class="border-top pt-3 mt-3">
+                            <div id="attributes">
+                                <p>Sedang memuat...</p>
+                            </div>
+
+                            <button type="submit" class="btn btn-info pl-4 pr-4 mr-auto d-flex align-items-center">
+                                <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+
+                                Simpan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+    <script type="text/javascript">
+        // ...
+        // DEFINED
+        // ...
+        var attributeItems = [];
+        const attributeElement = $('#attributes');
+        const params = {
+            'identifiers': 'job,address,about',
+            'xhrFields': {
+                withCredentials: true
+            }
+        };
+
+        // TEXT ELEMENT
+        function textElement(data) {
+            var value = (data.value.object ? data.value.object : ''),
+                field_type = data.field_type,
+                is_required = data.is_required,
+                identifier = data.identifier,
+                label = data.label,
+                placeholder = (data.placeholder ? data.placeholder : '');
+
+            if (field_type === 'text') {
+                return `<div class="form-group">
+                    <label for="${identifier}">${label}</label>
+                    <input type="text" id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''} value="${value}" placeholder="${placeholder}">
+                </div>`;
+            }
+
+            if (field_type === 'richtext') {
+                return `<div class="form-group">
+                    <label for="${identifier}">${label}</label>
+                    <textarea id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''} placeholder="${placeholder}">${value}</textarea>
+                </div>`;
+            }
+        }
+
+        // ...
+        // ELEMENT HANDLER
+        // ...
+        function attributesHandler(data) {
+            // Exclude image and file object
+            var filteredFields = data.filter(function(x) {
+                return x.field_type != 'image' && x.field_type != 'file';
+            });
+
+            $.each(filteredFields, function(index, value) {
+                var htmlItem;
+
+                // TEXT FIELD
+                if (value.field_type === 'text' || value.field_type === 'richtext') htmlItem = textElement(value);
+
+                // Collecting...
+                if (htmlItem) attributeItems.push(htmlItem);
+            });
+
+            // Add more fields
+            var fullName = '<div class="form-group">' +
+                '<label for="first_name">Nama Lengkap</label>' +
+                '<input type="text" class="form-control" name="first_name" value="{{ user.first_name }}">' +
+            '</div>';
+            
+            attributeItems.unshift(fullName);
+
+            // Inject to wrapper and show it!
+            attributeElement.html(attributeItems.join(''));
+        }
+
+        $('form').submit(function(event) {
+            event.preventDefault();
+
+            var formValuesObj = getFormValues($(this));
+            var saveValuesObj = {};
+
+            $.each(formValuesObj, function(i, v) {
+                saveValuesObj[i] = v.value;
+            });
+
+            submitHandler($(this), saveValuesObj);
+
+            $(this).find('button').prop('disabled', true);
+            $(this).find('button').find('.spinner').removeClass('d-none');
+        });
+
+        // ...
+        // ATTRIBUTES REQUEST
+        /// ...
+        async function loadAttributes(params) {
+            await $.get('/api/person/attributes/', params, function(data) {
+                attributesHandler(data);
+            }).fail(function() {
+               alert('Something wrong! Reload page.');
+            });
+        }
+
+        loadAttributes(params);
+
+        // ...
+        // SAVE ATTRIBUTES UPDATE
+        // ...
+        function submitHandler($form=null, $data) {
+            $.ajax({
+                method: 'PUT',
+                url: '/api/person/attributes/update/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$data
+                },
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sukses',
+                        text: 'Profil berhasil diperbarui.',
+                    });
+
+                    // Basic profile save
+                    saveBasicProfile($data);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorMessage = 'Terjadi kesalahan. Coba lagi.',
+                            usernameError = error.responseJSON.username,
+                            passwordError = error.responseJSON.password,
+                            notFoundError = error.responseJSON.detail;
+
+                        // Username
+                        if (usernameError) errorMessage = usernameError;
+
+                        // Password
+                        if (passwordError) errorMessage = passwordError.join('');
+
+                        // Account not found
+                        if (notFoundError) errorMessage = notFoundError;
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: errorMessage
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $form.find('button').prop('disabled', false);
+                    $form.find('button').find('.spinner').addClass('d-none');
+                }
+            });
+        }
+
+        // ...
+        // UPDATE BASIC PROFILE
+        // ...
+        function saveBasicProfile($data) {
+            $.ajax({
+                method: 'PATCH',
+                url: '/api/person/persons/{{ user.person.uuid }}/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$data
+                }
+            });
+        }
+    </script>
+{% endblock %}

@@ -6,485 +6,153 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container ui main-content">
-        <div class="row justify-content-center">
-            <div class="col-12 col-sm-12 col-md-10 col-lg-9 col-xl-8">
-                <h1 class="mb-3">
-                    <span class="text-muted border-bottom font-weight-light">Rev. {{ revision.version }}: </span>
-                    {{ revision.label }}
-                </h1>
-
-                <div class="border-bottom pb-4 mb-4">
-                    <div class="d-flex w-100">
-                        <span class="mr-auto">
-                            <span class="d-block w-100 font-weight-bold"><i class="icon asterisk"></i> Sorotan</span>
-                            {% if not introductions.exists %}Tidak ada sorotan{% endif %}
-                        </span>
-
-                        {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-                            <span>
-                                <button type="button" id="add-introduction" class="ui basic grey button mini">Tambah</button>
-                            </span>
-                        {% endif %}
-                    </div>
-                    
-                    {% if introductions.exists %}
-                        <div class="ui list">
-                            {% for item in introductions %}
-                                <div class="item">
-                                    <i class="check icon"></i>
-
-                                    <div class="content">
-                                        <span id="introduction-description">{{ item.description }}</span>
-
-                                        {% if item.creator == user.person %}
-                                            <a id="delete-object" class="ml-2 text-danger" data-uuid="{{ item.uuid }}" data-path="introductions">[Hapus]</a>
-                                            <a id="change-introduction" class="ml-2" data-uuid="{{ item.uuid }}">[Sunting]</a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-
-                <p>
-                    <span class="d-block w-100 font-weight-bold"><i class="icon user"></i> Pemateri</span>
-                    <span class="text-capitalize">{{ revision.creator.user.username }}</span>
-                </p>
-
-                <p>
-                    <span class="d-block w-100 font-weight-bold"><i class="icon clock outline"></i> Pembaruan</span>
-        
-                    {% if revision.explain_date_created and revision.chapter_date_created %}
-                        {% if revision.explain_date_created >= revision.chapter_date_created %}
-                            <a href="{% url 'explain_revision_detail' revision.explain_uuid %}">
-                                {{ revision.explain_date_created }}
-                                <i class="icon caret right"></i>
-                            </a>
-                        {% else %}
-                            <a href="{% url 'chapter_revision_detail' revision.chapter_uuid %}">
-                                {{ revision.chapter_date_created }}
-                                <i class="icon caret right"></i>
-                            </a>
-                        {% endif %}
-                    {% else %}
-                        {{ revision.date_updated }}
-                    {% endif %}
-                </p>
-
-                {% if revision.creator == user.person %}
-                    <p>
-                        <span class="d-block w-100 font-weight-bold"><i class="icon bullhorn"></i> Status</span>
-                        <span class="text-uppercase">{{ revision.get_status_display }}</span>
-                    </p>
-                {% endif %}
-
-                <article class="mb-4">
-                    <span class="d-block w-100 font-weight-bold"><i class="icon file alternate outline"></i> Keterangan</span>
-                    {{ revision.description }}
-                </article>
-
-                <p>
-                    <span class="d-block w-100 font-weight-bold"><i class="icon tasks"></i> Changelog</span>
-                    {{ revision.changelog }}
-                </p>
-
-                {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-                    <button type="button" id="update-revision" class="ui secondary button mini" data-uuid="{{ item.uuid }}">
-                        <i class="ui icon file alternate outline"></i>
-                        Perbarui
+    <div class="container main-content d-flex pt-0">
+        <div class="docs-nav pr-4 align-self-stretch position-relative">
+            <div class="tools d-flex w-100 align-items-center">
+                {% if guide_obj.creator.id == person_pk %}
+                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                        Tambah Bab
+                    </button>
+                {% else %}
+                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                        Tampilkan Semua
                     </button>
                 {% endif %}
+            </div>
 
-                <div class="border-top pt-4 mt-4"></div>
+            <div class="chapter-wrap h-100">
+                <div class="chapter-list pr-3 pb-3 pt-2"></div>
+            </div>
+        </div> <!-- /.docs-nav -->
 
-                <div class="d-flex w-100 mb-3">
-                    <h2 class="mr-auto mt-0 mb-0">Bab</h2>
+        <div class="docs-content flex-grow-1">
+            EF
+        </div> <!-- /.docs-content -->
+    </div> <!-- /.main content -->
 
-                    {% if revision.creator == user.person %}
-                        <span>
-                            <button type="button" id="add-chapter" class="ui basic grey button mini">Tambah</button>
-                        </span>
-                    {% endif %}
-                </div>
+    {% if guide_obj.creator.id == person_pk %}
+        <div class="modal fade" id="modalAddChapter" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tambah Bab</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
 
-                {% if chapters.exists %}
-                    <div id="sortable" class="ui fluid vertical accordion styled accordion-menu">
-                        {% for item in chapters %}
-                            <div id="item_{{ item.pk }}" class="item" data-uuid="{{ item.uuid }}">
-                                <div class="title">
-                                    <div class="d-flex fluid">
-                                        <i class="dropdown icon control" style="width:15px; margin-top:1.5px"></i>
-
-                                        <div class="text-left d-flex w-100">
-                                            <span class="w-100">
-                                                <span class="control">{{ item.chapter_label }}</span>
-                            
-                                                <span class="text-muted font-weight-normal">
-                                                    {% if item.creator.pk == user.person.pk %}
-                                                        {% if item.num_explain %} - {{ item.num_explain }} bab{% endif %}
-                                                    {% else %}
-                                                        {% if item.num_explain_published %} - {{ item.num_explain_published }} bab{% endif %}
-                                                    {% endif %}
-                                                </span>
-
-                                                <a href="{% url 'chapter_revision_detail' item.chapter_uuid %}">
-                                                    <i class="linkify icon small text-muted"></i>
-                                                </a>
-                                            </span>
-
-                                            <div class="ml-auto text-right" style="width:175px">
-                                                <div class="d-table w-100 justify-content-around">
-                                                    <small class="d-table-cell text-muted font-weight-normal">
-                                                        ref. {{ item.chapter_version }}
-                                                    </small>
-
-                                                    {% if item.creator == user.person %}
-                                                        <span class="d-table-cell">
-                                                            {% if item.chapter_status == PUBLISHED %}
-                                                                <i class="eye icon text-success mr-0"></i>
-                                                            {% elif item.chapter_status == DRAFT %}
-                                                                <i class="eye slash icon text-muted mr-0"></i>
-                                                            {% endif %}
-                                                        </span>
-
-                                                        <a id="delete-object" class="d-table-cell text-danger ml-2" data-uuid="{{ item.uuid }}" data-revision-uuid="{{ item.chapter_uuid }}" data-path="chapters">
-                                                            <i class="trash icon mr-0"></i>
-                                                        </a>
-                                                        
-                                                        <a id="update-chapter" class="d-table-cell ml-2" data-chapter-uuid="{{ item.uuid }}" data-revision-uuid="{{ item.chapter_uuid }}">
-                                                            <i class="edit icon mr-0"></i>
-                                                        </a>
-
-                                                        <span class="d-table-cell chapter-move">
-                                                            <i class="expand arrows alternate icon"></i>
-                                                        </span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="content pt-0" data-uuid="{{ item.uuid }}">
-                                    <div id="sub-list" class="ui list sub-sortable pl-1">
-                                        <div class="ui active inline loader mini"></div>
-                                    </div>
-
-                                    {% if item.creator == user.person %}
-                                        <div class="item mt-1">
-                                            <a id="add-explain" data-chapter="{{ item.pk }}">
-                                                <i class="plus square icon"></i> Sub-bab
-                                            </a>
-                                        </div>
-                                    {% endif %}
-                                </div>
+                    <div class="modal-body">
+                        <form class="form-chapter w-100">
+                            <div class="form-group">
+                                <label for="label">Label</label>
+                                <input type="text" id="label" class="form-control" name="label" required>
                             </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p>Belum ada Bab.</p>
-                {% endif %}
-            </div> <!-- /.col -->
-        </div> <!-- /.row -->
-    </div> <!-- /.container -->
 
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <div class="ui modal small modal-introduction">
-            <div class="header">
-                Tambah Sorotan
-            </div>
+                            <div class="form-group">
+                                <label for="status">Status</label>
 
-            <div class="image content">
-                <form class="ui form form-introduction w-100">
-                    <div class="field">
-                        <div class="ui input">
-                            <textarea name="description" rows="4" placeholder="Isi sorotan, ringkas, padat dan jelas" required></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="actions d-flex w-100">
-                <div id="cancel" class="ui button close mr-auto cancel">Batal</div>
-
-                <div id="submit-introduction" class="ui button primary">
-                    <i class="check icon"></i>
-                    Simpan
-                </div>
-            </div>
-        </div> <!-- /.modal add introduction -->
-
-        <div class="ui modal small modal-chapter">
-            <div class="header">
-                Tambah Bab
-            </div>
-
-            <div class="image content">
-                <form class="ui form form-chapter w-100">
-                    <div class="field">
-                        <label>Nama</label>
-
-                        <div class="ui left icon input">
-                            <i class="clipboard outline icon"></i>
-                            <input name="label" type="text" required>
-                        </div>
-                    </div>
-
-                    <div class="grouped fields">
-                        <label>Status</label>
-
-                        <div class="row m-0">
-                            {% for item in status_choice %}
-                                <div class="field col-12 col-sm-6">
-                                    <div class="ui radio checkbox">
-                                        <input type="radio" name="status" value="{{ item.0 }}" required>
-                                        <label>{{ item.1 }}</label>
+                                {% for item in status_choices %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="status" id="status_{{ item.0 }}" value="{{ item.0 }}" required>
+                                        <label class="form-check-label" for="status_{{ item.0 }}">
+                                            {{ item.1 }}
+                                        </label>
                                     </div>
-                                </div>
-                            {% endfor %}
-                        </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description">
+                                    Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span>
+                                </label>
+
+                                <textarea id="description" class="form-control" name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="changelog">Changelog</label>
+                                <textarea id="changelog" class="form-control" name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
+                            </div>
+
+                            <input type="hidden" name="guide" value="{{ guide_obj.id }}">
+
+                            <div class="mt-4 d-flex w-100 border-top pt-4">
+                                <button type="button" class="btn btn-secondary mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
+
+                                <button type="submit" class="btn btn-info pl-4 pr-4 ml-auto d-flex align-items-center">
+                                    <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                        <span class="sr-only">Loading...</span>
+                                    </div>
+
+                                    Simpan
+                                </button>
+                            </div>
+                        </form>
                     </div>
-
-                    <div class="field">
-                        <label>Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span></label>
-
-                        <div class="ui input">
-                            <textarea name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <label>Changelog</label>
-
-                        <div class="ui input">
-                            <textarea name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="actions d-flex w-100">
-                <div id="cancel" class="ui button close mr-auto cancel">Batal</div>
-
-                <div id="submit-chapter" class="ui button primary">
-                    <i class="check icon"></i>
-                    Simpan
                 </div>
             </div>
         </div> <!-- /.modal add chapter -->
-
-        <div class="ui modal small modal-explain">
-            <div class="header">
-                Tambah Sub-bab
-            </div>
-
-            <div class="image content">
-                <form class="ui form form-explain w-100">
-                    <div class="field">
-                        <label>Nama</label>
-
-                        <div class="ui left icon input">
-                            <i class="clipboard outline icon"></i>
-                            <input name="label" type="text" required>
-                        </div>
-                    </div>
-
-                    <div class="grouped fields">
-                        <label>Status</label>
-
-                        <div class="row m-0">
-                            {% for item in status_choice %}
-                                <div class="field col-12 col-sm-6">
-                                    <div class="ui radio checkbox">
-                                        <input type="radio" name="status" value="{{ item.0 }}" required>
-                                        <label>{{ item.1 }}</label>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <label>Changelog</label>
-
-                        <div class="ui input">
-                            <textarea name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="actions d-flex w-100">
-                <div id="cancel" class="ui button close mr-auto cancel">Batal</div>
-
-                <div id="submit-explain" class="ui button primary">
-                    <i class="check icon"></i>
-                    Simpan
-                </div>
-            </div>
-        </div> <!-- /.modal add explain -->
     {% endif %}
-{% endblock %}
-
-{% block css %}
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/checkbox.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/loader.min.css' %}">
-
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/modal.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/dimmer.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/transition.min.css' %}">
-    {% endif %}
-
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/accordion.min.css' %}">
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{% static 'vendors/semantic/components/accordion.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/jquery-sticky/jquery.sticky-sidebar.min.js' %}"></script>
 
-    <script type="text/javascript">
-        // ...
-        // ACCORDION CHAPTER
-        // ...
-        $('.ui.accordion').accordion({
-            exclusive: false,
-            duration: 0,
-            selector: {
-                trigger: '.title .control'
-            },
-            onOpening: function (item) {
-                if (!this.hasClass('has-opened')) {
-                    loadExplains(this, this.data('uuid'));
-                }
-            }
-        });
-
-        function loadExplains($this, chapter_uuid) {
-            $.ajax({
-                method: 'GET',
-                url: '/api/beacon/explains/',
-                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                xhrFields: {withCredentials: true},
-                data: {
-                    chapter_uuid: chapter_uuid,
-                },
-                success: function(response) {
-                    var item;
-
-                    if (response.length > 0) {
-                        var listItem = [];
-
-                        $.each(response, function(index, value) {
-                            var status;
-                            var is_creator = value.creator_uuid === '{{ user.person.uuid }}';
-
-                            if (value.explain_status == '{{ PUBLISHED }}') {
-                                status = '<i class="eye icon text-success mr-0"></i>';
-                            } else if (value.explain_status == '{{ DRAFT }}') {
-                                status = '<i class="eye slash icon text-muted mr-0"></i>';
-                            }
-
-                            var control = '<a id="delete-object" class="d-table-cell text-danger" data-uuid="' + value.uuid + '" data-revision-uuid="' + value.explain_uuid + '" data-path="chapters">' +
-                                '<i class="trash icon mr-0"></i>' +
-                            '</a>' +
-                            
-                            '<a id="update-explain" class="d-table-cell" data-explain-uuid="' + value.uuid + '" data-revision-uuid="' + value.explain_uuid + '">' +
-                                '<i class="edit icon mr-0"></i>' +
-                            '</a>';
-
-                            var mover = '<span class="d-table-cell explain-move">' +
-                                '<i class="expand arrows alternate icon"></i>' +
-                            '</span>';
-    
-                            var item = '<div id="item_' + value.id + '" class="item">' +
-                                '<div class="d-flex w-100">' +
-                                    '<span class="control w-100">' +
-                                        '<a href="' + value.permalink + '">' + value.explain_label + '</a>' +
-                                    '</span>' +
-                            
-                                    '<div class="ml-auto text-right" style="width:175px">' +
-                                        '<div class="d-table w-100 justify-content-around">' +
-                                            '<small class="d-table-cell text-muted font-weight-normal">' +
-                                                'ref. ' + value.explain_version +
-                                            '</small>' +
-
-                                            (is_creator ? '<span class="d-table-cell">' + status + '</span>' + control + mover : '') +
-                                        '</div>' +
-                                    '</div>' +
-                                '</div>' +
-                            '</div>';
-
-                            listItem.push(item);
-                        });
-
-                        item = listItem.join('');
-                    } else {
-                        item = 'Belum ada sub-bab.';
-                    }
-
-                    $this.find('#sub-list').html(item);
-                    $this.addClass('has-opened');
-                },
-                error: function(error) {
-                    
-                }
-            });
-        }
-    </script>
-
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/modal.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/dimmer.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/transition.min.js' %}"></script>
-
-        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/jquery-ui/jquery-ui.min.js' %}"></script>
-
-        <script type="text/javascript" src="{% static 'vendors/js/chapter.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/js/explain.js' %}"></script>
-
+    {% if guide_obj.creator.id == person_pk %}
         <script type="text/javascript">
-            var globalParams = {
-                'revision_guide_pk': '{{ revision.guide.pk }}',
-                'published': '{{ PUBLISHED }}',
-                'draft': '{{ DRAFT }}',
-            }
-            
-            // ...
-            // SUBMIT HANDLER
-            // ...
-            function submitRevisionHandler($element=null, $fields) {
-                $.ajax({
-                    method: 'POST',
-                    url: '/api/beacon/guides-revisions/',
-                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                    xhrFields: {withCredentials: true},
-                    data: {
-                        ...$fields,
-                        csrfmiddlewaretoken: Cookies.get('csrftoken'),
-                    },
-                    success: function(response) {
-                        window.location.replace(response.permalink);
-                    },
-                    error: function(error) {
-                        $('.cancel').removeClass('disabled');
-                        $($element).removeClass('loading');
+            $(document).on('submit', '.form-chapter', function(event) {
+                event.preventDefault();
 
+                var formValuesObj = getFormValues($(this));
+                var saveValuesObj = {};
+
+                $.each(formValuesObj, function(i, v) {
+                    saveValuesObj[i] = v.value;
+                });
+
+                submitChapterHandler($(this), saveValuesObj);
+
+                $(this).find('button').prop('disabled', true);
+                $(this).find('button').find('.spinner').removeClass('d-none');
+            });
+
+            // ...
+            // SUBMIT CHAPTER HANDLER
+            // ...
+            function submitChapterHandler($form = null, $data) {
+                $.ajax({
+                    method: "POST",
+                    url: '/api/beacon/chapters/',
+                    headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
+                    xhrFields: { withCredentials: true },
+                    data: {
+                        ...$data
+                    },
+                    success: function (response) {
+                        var item = `<div id="item_${response.id}" class="chapter-group" data-uuid="${response.uuid}">
+                            <h3 class="header">
+                                <a href="${response.permalink}" class="text-dark">
+                                    ${response.label}
+                                </a>
+                            </h3>
+                        </div>`;
+
+                        $('.chapter-list').append(item);
+                        $('#modalAddChapter').modal('hide');
+                        $form[0].reset();
+
+                        $('.chapter-wrap').animate({
+                            scrollTop: $('#item_' + response.id).offset().top
+                        }, 0);
+                    },
+                    error: function (error) {
                         if (error && error.responseJSON) {
                             var errorJSON = error.responseJSON,
                                 errorMessage = [];
 
-                            $.each(errorJSON, function(index, item) {
+                            $.each(errorJSON, function (index, item) {
                                 var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-                                
+
                                 if (Array.isArray(item)) {
                                     errorMessage.push(label + item.join(' '));
                                 } else {
@@ -503,278 +171,68 @@
                                 });
                             }
                         }
+                    },
+                    complete: function(xhr, status) {
+                        $form.find('button').prop('disabled', false);
+                        $form.find('button').find('.spinner').addClass('d-none');
                     }
                 });
             }
-
-            // ...
-            // UPDATE revisions
-            // ...
-            $(document).on('click', '#update-revision', function(e) {
-                e.preventDefault();
-                $(this).addClass('loading');
-
-                var fields = {
-                    'uuid': '{{ revision.uuid }}',
-                    'guide_uuid': '{{ revision.guide.uuid }}',
-                }
-
-                submitRevisionHandler($(this), fields);
-            });
-
-            // ...
-            // CREATE INTRODUCTIONS
-            // ...
-            $(document).on('click', '#add-introduction', function(event) {
-                event.preventDefault();
-                initModal('introduction');
-            });
-
-            $(document).on('click', '#submit-introduction', function(event) {
-                event.preventDefault();
-                $(this, '.cancel').addClass('disabled');
-                $('.form-introduction').submit();
-            });
-
-            // ...
-            // CHANGE INTRODUCTIONS
-            // ...
-            $(document).on('click', '#change-introduction', function(event) {
-                event.preventDefault();
-
-                var $this = $(this),
-                    uuid = $this.data('uuid'),
-                    description = $this.closest('.content').find('#introduction-description').html();
-
-                $('.modal-introduction').addClass('change');
-                $('.modal-introduction').find('.header').text('Sunting Sorotan');
-                $('.modal-introduction').find('textarea').val(description);
-                $('.modal-introduction').modal('show');
-                $('.modal-introduction').find('form').attr('data-uuid', uuid);
-            });
-
-            // ...
-            // SUBMIT INTRODUCTIONS HANDLER
-            // ...
-            function submitIntroductionHandler($element=null, $fields) {
-                var method = ($fields.uuid ? 'PATCH': 'POST');
-                var param = ($fields.uuid ? $fields.uuid + '/' : '');
-
-                $.ajax({
-                    method: method,
-                    url: '/api/beacon/introductions/' + param,
-                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                    xhrFields: {withCredentials: true},
-                    data: {
-                        ...$fields,
-                        object_id: '{{ revision.pk }}',
-                        model_name: '{{ revision_model_name }}',
-                        csrfmiddlewaretoken: Cookies.get('csrftoken'),
-                    },
-                    success: function(response) {
-                        window.location.reload();
-                    },
-                    error: function(error) {
-                        $($element).removeClass('loading');
-                        $('#submit, .cancel').removeClass('disabled');
-
-                        if (error && error.responseJSON) {
-                            var errorJSON = error.responseJSON,
-                                errorMessage = [];
-
-                            $.each(errorJSON, function(index, item) {
-                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-                                
-                                if (Array.isArray(item)) {
-                                    errorMessage.push(label + item.join(' '));
-                                } else {
-                                    errorMessage.push(label + item);
-                                }
-                            });
-
-                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
-
-                            // Show error
-                            if (errorMessage) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Oops...',
-                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
-                                });
-                            }
-                        }
-                    }
-                });
-            }
-
-            // ...
-            // FORM INTRODUCTION VALIDATION
-            // ...
-            $('.form-introduction').form({
-                on: 'blur',
-                inline: true,
-                fields: {
-                    description: {
-                        identifier: 'description',
-                        rules: [
-                            {
-                                type   : 'empty',
-                                prompt : 'Keterangan tidak boleh kosong'
-                            },
-                            {
-                                type   : 'minLength[25]',
-                                prompt : 'Keterangan minimal 25 karakter'
-                            }
-                        ]
-                    },
-                },
-                onSuccess: function(event, fields) {
-                    // Prevent default form submit!
-                    // We use REST API for handle login.
-                    if (event) {
-                        event.preventDefault();
-                        
-                        $(event.target).addClass('loading');
-
-                        fields.uuid = $(event.target).data('uuid');
-                        submitIntroductionHandler(event.target, fields);
-                    }
-                },
-                onFailure: function(formErrors, fields) {
-                    $('#submit-introduction').removeClass('disabled');
-                    return false;
-                }
-            });
-
-            // ...
-            // DELETE OBJECT
-            // ...
-            $(document).on('click', '#delete-object', function(event) {
-                event.preventDefault();
-
-                const uuid = $(this).data('uuid');
-                const path = $(this).data('path');
-
-                Swal.fire({
-                    title: 'Konfirmasi',
-                    text: "Tindakan ini tidak bisa dikembalikan",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Hapus',
-                    cancelButtonText: 'Batal',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.value) {
-                        if (uuid) deleteHandler(uuid, path);
-                    } else if (
-                        /* Read more about handling dismissals below */
-                        result.dismiss === Swal.DismissReason.cancel
-                    ) {
-                        // Cancel...
-                    }
-                });
-            });
-
-            // ...
-            // DELETE HANDLER
-            // ...
-            function deleteHandler(uuid, path) {
-                $.ajax({
-                    method: 'DELETE',
-                    url: '/api/beacon/' + path + '/' + uuid + '/',
-                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                    xhrFields: {withCredentials: true},
-                    data: {
-                        csrfmiddlewaretoken: Cookies.get('csrftoken'),
-                    },
-                    success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Terhapus!',
-                            text: 'Sedang mengalihkan...',
-                            showCloseButton: false,
-                            showCancelButton: false,
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                        });
-
-                        window.location.reload();
-                    },
-                    error: function(error) {
-                        if (error && error.responseJSON) {
-                            var errorJSON = error.responseJSON,
-                                errorMessage = [];
-
-                            $.each(errorJSON, function(index, item) {
-                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-                                
-                                if (Array.isArray(item)) {
-                                    errorMessage.push(label + item.join(' '));
-                                } else {
-                                    errorMessage.push(label + item);
-                                }
-                            });
-
-                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
-
-                            // Show error
-                            if (errorMessage) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Oops...',
-                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
-                                });
-                            }
-                        }
-                    }
-                });
-            }
-
-            // ...
-            // INIT MODAL
-            // ...
-            function initModal(name=null, data=null) {
-                $modal = $('.modal-' + name).modal({
-                    autofocus: false,
-                    closable: false,
-                    onShow: function() {
-                        var $element = $(this);
-
-                        // Modal chapter
-                        if (name === 'chapter') {
-                            initChapterForm(data);
-                        }
-                    },
-                    onHide: function($element) {
-                        var $element = $(this);
-
-                        // Clear values
-                        $element.find('form').removeAttr('data-uuid');
-                        $element.find('form').form('reset');
-
-                        // Modal introduction
-                        if (name === 'introduction') {
-                            $element.find('.header').text('Tambah Sorotan');
-                        }
-
-                        // Modal chapter
-                        if (name === 'chapter') {
-                            $('#submit-chapter, .cancel').removeClass('disabled');
-                        }
-                    }
-                });
-
-                $modal.modal('show');
-            }
-
-            // ...
-            // CLOSE MODAL
-            // ...
-            $(document).on('click', '#cancel', function(event) {
-                event.preventDefault();
-                $('.modal').modal('hide');
-            });
         </script>
     {% endif %}
+
+    <script type="text/javascript">
+        var chapterObjs = $.ajax('/api/beacon/chapters/?guide_uuid={{ guide_obj.uuid }}');
+        var explainObjs = $.ajax('/api/beacon/explains/?guide_uuid={{ guide_obj.uuid }}');
+
+        $.when(chapterObjs, explainObjs).done(function(chapterRes, explainRes) {
+            var combineChapterExplain = [],
+                chapterItem = '',
+                chapters = chapterRes[0],
+                explains = explainRes[0];
+    
+            $.each(chapters, function(index, value) {
+                var explainFiltered = explains.filter(function(x) {
+                    return x.chapter_uuid === value.uuid;
+                });
+
+                value.explains = explainFiltered;
+                combineChapterExplain.push(value);
+            });
+
+            $.each(combineChapterExplain, function(index, value) {
+                var explainsList = '',
+                    explainItem = '',
+                    explains = value.explains,
+                    uuid = value.published ? value.published.uuid : value.draft.uuid,
+                    has_explain = explains.length > 0;
+                
+                if (has_explain) {
+                    $.each(explains, function(ei, ev) {
+                        var rev_uuid = ev.published ? ev.published.uuid : ev.draft.uuid;
+
+                        explainItem += `<li id="item_${ev.id}" data-uuid="${rev_uuid}">
+                            <a href="${ev.permalink}" class="text-dark">
+                                ${ev.published ? ev.published.label : ev.label}
+                            </a>
+                        </li>`;
+                    });
+
+                    explainsList = `<ul class="list-unstyled pl-3 pt-1 explain-list">${explainItem}</ul>`;
+                }
+
+                chapterItem += `<div id="item_${value.id}" class="chapter-group" data-uuid="${uuid}">
+                    <h3 class="header">
+                        <a href="${value.permalink}" class="text-dark">
+                            ${value.published ? value.published.label : value.draft.label}
+                        </a>
+                    </h3>
+
+                    ${explainsList}
+                </div>`;
+            });
+
+            if (chapterItem) $('.chapter-list').html(chapterItem);
+        });
+    </script>
 {% endblock %}

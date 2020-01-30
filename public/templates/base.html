@@ -8,16 +8,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         {% block head %}{% endblock %}
         
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/reset.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/site.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/container.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/menu.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/grid.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/icon.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/button.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/card.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/bootstrap-grid.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/bootstrap-utilities.min.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/bootstrap/css/bootstrap.min.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'vendors/css/main.css' %}">
 
         {% block css %}{% endblock %}
@@ -40,9 +31,11 @@
             {% include "templates/footer.html" %}
         </footer>
     
-        <script type="text/javascript" src="{% static 'vendors/js/jquery-3.4.1.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/js/js.cookie.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/site.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/jquery/jquery-3.4.1.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/jquery/jquery-migrate-3.1.0.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/scripts/js.cookie.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/scripts/main.js' %}"></script>
         {% block js %}{% endblock %}
     </body>
 </html>

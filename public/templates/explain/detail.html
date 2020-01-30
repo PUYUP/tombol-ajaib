@@ -7,54 +7,91 @@
 {% endblock %}
 
 {% block content %}
-    <div class="ui container main-content">
-        <div class="row">
-            <div class="col-12 col-sm-12 col-md-4">
-                <div class="chapter-list">
-                    {% explain_sidenav request explain revision %}
-                </div>
-            </div> <!-- /.col -->
+    <div class="container main-content d-flex pt-0">
+        <div class="docs-nav pr-4 align-self-stretch position-relative">
+            <div class="tools d-flex w-100 align-items-center">
+                {% if guide_obj.creator.id == person_pk %}
+                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                        Tambah Bab
+                    </button>
+                {% else %}
+                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                        Tampilkan Semua
+                    </button>
+                {% endif %}
+            </div>
 
-            <div class="col-12 col-sm-12 col-md-8">
-                <h1 class="mt-0 mb-0">{{ revision.label }}</h1>
-                
-                <div class="ui horizontal bulleted list small text-muted">
-                    <div class="item">
-                        ref. {{ revision.version }}
-                    </div>
+            <div class="chapter-wrap h-100">
+                <div class="chapter-list pr-3 pb-3 pt-2"></div>
+            </div>
+        </div> <!-- /.docs-nav -->
 
-                    <div class="item">
-                        {{ revision.date_created }}
-                    </div>
+        <div class="docs-content flex-grow-1">
+            {{ explain_obj.label }}
 
-                    <div class="item">
-                        <a id="update-explain" data-explain-uuid="{{ revision.explain.uuid }}" data-revision-uuid="{{ revision.uuid }}">
-                            perbarui
-                        </a>
-                    </div>
-                </div>
-
-                <article>
-                    {{ content | safe }}
-                </article>
-            </div> <!-- /.col -->
-        </div> <!-- /.row -->
-    </div>
-{% endblock %}
-
-{% block css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/sidebar.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
+            # published: {{ explain_obj.published_version }}
+            # draft: {{ explain_obj.draft_version }}
+        </div> <!-- /.docs-content -->
+    </div> <!-- /.main content -->
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{% static 'vendors/semantic/components/sidebar.min.js' %}"></script>
-
     <script type="text/javascript">
-       $('.ui.sidebar').sidebar();
-    </script>
+        var chapterObjs = $.ajax('/api/beacon/chapters/?guide_uuid={{ explain_obj.guide.uuid }}');
+        var explainObjs = $.ajax('/api/beacon/explains/?guide_uuid={{ explain_obj.guide.uuid }}');
 
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <script type="text/javascript" src="{% static 'vendors/js/explain.js' %}"></script>
-    {% endif %}
+        $.when(chapterObjs, explainObjs).done(function(chapterRes, explainRes) {
+            var combineChapterExplain = [],
+                chapterItem = '',
+                chapters = chapterRes[0],
+                explains = explainRes[0];
+    
+            $.each(chapters, function(index, value) {
+                var explainFiltered = explains.filter(function(x) {
+                    return x.chapter_uuid === value.uuid;
+                });
+
+                value.explains = explainFiltered;
+                combineChapterExplain.push(value);
+            });
+
+            $.each(combineChapterExplain, function(index, value) {
+                var explainsList = '',
+                    explainItem = '',
+                    explains = value.explains,
+                    uuid = value.published ? value.published.uuid : value.draft.uuid,
+                    has_explain = explains.length > 0;
+                
+                if (has_explain) {
+                    $.each(explains, function(ei, ev) {
+                        var rev_uuid = ev.published ? ev.published.uuid : ev.draft.uuid;
+
+                        explainItem += `<li id="item_${ev.id}" data-uuid="${rev_uuid}">
+                            <a href="${ev.permalink}" class="text-dark">
+                                ${ev.published ? ev.published.label : ev.label}
+                            </a>
+                        </li>`;
+                    });
+
+                    explainsList = `<ul class="list-unstyled pl-3 pt-1 explain-list">${explainItem}</ul>`;
+                }
+
+                chapterItem += `<div id="item_${value.id}" class="chapter-group" data-uuid="${uuid}">
+                    <h3 class="header">
+                        <a href="${value.permalink}" class="text-dark">
+                            ${value.published ? value.published.label : value.draft.label}
+                        </a>
+                    </h3>
+
+                    ${explainsList}
+                </div>`;
+            });
+
+            if (chapterItem) $('.chapter-list').html(chapterItem);
+
+            $('.chapter-wrap').animate({
+                scrollTop: $('[data-uuid="{{ explain_uuid }}"]').offset().top - 150
+            }, 0);
+        });
+    </script>
 {% endblock %}

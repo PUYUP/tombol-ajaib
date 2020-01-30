@@ -104,7 +104,7 @@ class GuideApiView(viewsets.ViewSet):
                 num_chapter=Count('chapters', distinct=True),
                 **draft_fields,
                 **published_fields) \
-            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
+            .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
 
         if person_uuid:
             queryset = queryset.filter(creator__uuid=person_uuid)

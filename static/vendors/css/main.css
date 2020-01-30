@@ -1,99 +1,77 @@
-h1 { font-size: 22px; }
-
-.navbar {
-    padding: 10px 0;
-    background-color: #f7f7f7;
-}
-
 .main-content {
-    padding-top: 35px;
-    padding-bottom: 25px;
+    padding-top: 75px;
 }
 
-/* ...
- * EMBED
- */
- .embed-responsive {
-    position: relative;
-    width: 100%;
-}
-  
-.embed-responsive::before {
-    display: block;
-    content: "";
-}
-
-.embed-responsive .embed-responsive-item,
-.embed-responsive iframe,
-.embed-responsive embed,
-.embed-responsive object,
-.embed-responsive video {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-}
-
-.embed-responsive-21by9::before {
-    padding-top: 42.857143%;
-}
-
-.embed-responsive-16by9::before {
-    padding-top: 56.25%;
-}
-
-.embed-responsive-4by3::before {
-    padding-top: 75%;
-}
-
-.embed-responsive-1by1::before {
-    padding-top: 100%;
-}
-
-.accordion-menu .title {
-    border-top: 0 !important;
-}
-
-.accordion-menu .item + .item .title {
-    border-top: 1px solid rgba(34,36,38,.15) !important;
+.validation-item + .validation-item {
+    margin-top: 1rem;
 }
 
 /***
- * Chapter...
+ * Docs nav
  */
-.chapter-list > .list > .item + .item {
-    border-top: 1px solid rgba(34,36,38,.15) !important;
+.docs-nav {
+    height: calc(100vh - 60px);
+}
+
+.docs-nav,
+.docs-content {
+    padding-top: 75px;
+}
+
+.docs-nav .tools {
+    height: 60px;
+}
+
+.docs-nav .header {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.2em;
+}
+
+.docs-nav .chapter-group + .chapter-group {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.docs-nav .explain-list {
+    font-size: 14px;
+
+}
+
+.docs-nav .explain-list li + li {
     padding-top: 10px;
-    padding-bottom: 10px;
 }
 
-.chapter-list .ui.list .list>.item .header,
-.chapter-list .ui.list>.item .header {
-    font-weight: normal !important;
+.chapter-wrap {
+    will-change: min-height;
+    overflow-y: auto;
 }
 
-.chapter-list .ui.list .list>.item.active > .content > .header,
-.chapter-list .ui.list>.item.active > .content > .header {
-    font-weight: 700 !important;
+.chapter-list {
+    transform: translate(0, 0); /* For browsers don't support translate3d. */
+    transform: translate3d(0, 0, 0);
+    will-change: position, transform;
 }
 
-.chapter-list > .list > .item .content > .list > .item + .item {
-    padding-top: 10px;
-    padding-bottom: 10px;
-}
+@media (min-width: 992px) {
+    .container, .container-lg, .container-md, .container-sm {
+        max-width: 1400px;
+    }
 
-
-@media only screen and (max-width: 767px) {
-    .ui.container {
-        margin-left: 0 !important;
-        margin-right: 0 !important;
+    .docs-nav {
+        flex: 0 0 325px;
     }
 }
 
-@media only screen and (max-width: 991px) and (min-width: 768px) {
-    .ui.container {
-        width: 100% !important;
+@media (max-width: 560px) {
+    .validation-item button {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 992px) {
+    .container, .container-lg, .container-md, .container-sm {
+        max-width: none;
     }
 }

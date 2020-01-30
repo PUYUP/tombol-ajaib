@@ -7,183 +7,154 @@
 {% endblock %}
 
 {% block content %}
-    <div class="ui container main-content">
-        <div class="row">
-            <div class="col-12 col-sm-12 col-md-4">
-                <div class="chapter-list">
-                    {% chapter_sidenav request revision %}
-                </div>
-            </div> <!-- /.col -->
+    <div class="container main-content d-flex pt-0">
+        <div class="docs-nav pr-4 align-self-stretch position-relative">
+            <div class="tools d-flex w-100 align-items-center">
+                {% if guide_obj.creator.id == person_pk %}
+                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                        Tambah Bab
+                    </button>
+                {% else %}
+                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                        Tampilkan Semua
+                    </button>
+                {% endif %}
+            </div>
 
-            <div class="col-12 col-sm-12 col-md-8">
-                <h1 class="mt-0 mb-0">{{ revision.label }}</h1>
+            <div class="chapter-wrap h-100">
+                <div class="chapter-list pr-3 pb-3 pt-2"></div>
+            </div>
+        </div> <!-- /.docs-nav -->
+
+        <div class="docs-content flex-grow-1">
+            <div class="pt-2">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab"
+                            aria-controls="home" aria-selected="true">Konsep</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" id="profile-tab" data-toggle="tab" href="#profile" role="tab"
+                            aria-controls="profile" aria-selected="false">Terbit</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">...</div>
+                    <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">...</div>
+                </div>
+
+                <h1>{{ chapter_obj.label }}</h1>
+
+                {% if chapter_obj.description %}
+                    <p>{{ chapter_obj.description }}</p>
+                {% endif %}
+
+                # published: {{ chapter_obj.published_version }}
+                # draft: {{ chapter_obj.draft_version }}
+
                 
-                <div class="ui horizontal bulleted list small text-muted">
-                    <div class="item">
-                        ref. {{ revision.version }}
-                    </div>
-
-                    <div class="item">
-                        {{ revision.date_created }}
-                    </div>
-
-                    <div class="item">
-                        <a id="update-chapter" class="update-single" data-chapter-uuid="{{ revision.chapter.uuid }}" data-revision-uuid="{{ revision.uuid }}">
-                            perbarui
-                        </a>
-                    </div>
-                </div>
-
-                <div class="ui bulleted list">
-                    {% for item in explains %}
-                        <div class="item">
-                            <a href="{% url 'explain_revision_detail' item.explain_uuid %}" class="item">
-                                {{ item.explain_label }}
-                            </a>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div> <!-- /.col -->
-        </div> <!-- /.row -->
-    </div>
-
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <div class="ui modal small modal-chapter">
-            <div class="header">
-                Tambah Bab
-            </div>
-
-            <div class="image content">
-                <form class="ui form form-chapter w-100">
-                    <div class="field">
-                        <label>Nama</label>
-
-                        <div class="ui left icon input">
-                            <i class="clipboard outline icon"></i>
-                            <input name="label" type="text" required>
-                        </div>
-                    </div>
-
-                    <div class="grouped fields">
-                        <label>Status</label>
-
-                        <div class="row m-0">
-                            {% for item in status_choices %}
-                                <div class="field col-12 col-sm-6">
-                                    <div class="ui radio checkbox">
-                                        <input type="radio" name="status" value="{{ item.0 }}" required>
-                                        <label>{{ item.1 }}</label>
-                                    </div>
-                                </div>
+                <ul>
+                {% for key, value in res.items %}
+                    <li>
+                        {{ key.sort_stage }} {{ key.label }} - {{ key.chapter_draft_version }} - {{ key.chapter_published_version }}
+                        
+                        <ul>
+                            {% for item in value %}
+                                <li>{{ item.label }} - {{ item.explain_draft_version }} - {{ item.explain_published_version }}</li>
                             {% endfor %}
-                        </div>
-                    </div>
+                        </ul>
+                    </li>
+                {% endfor %}
+                </ul>
+                
+                {% comment %}
+                <ul>
+                    {% for item in unit_list %}
+                        <li>{{ item.chapter.label }}</li>
 
-                    <div class="field">
-                        <label>Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span></label>
-
-                        <div class="ui input">
-                            <textarea name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <label>Changelog</label>
-
-                        <div class="ui input">
-                            <textarea name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
-                        </div>
-                    </div>
-                </form>
+                        <ul>
+                            {% for eitem in item.explains %}
+                                <li>{{ eitem.label }} - {{ eitem.explain_draft_version }} - {{ eitem.explain_published_version }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endfor %}
+                </ul>
+                {% endcomment %}
             </div>
-
-            <div class="actions d-flex w-100">
-                <div id="cancel" class="ui button close mr-auto cancel">Batal</div>
-
-                <div id="submit-chapter" class="ui button primary">
-                    <i class="check icon"></i>
-                    Simpan
-                </div>
-            </div>
-        </div> <!-- /.modal add chapter -->
-    {% endif %}
-{% endblock %}
-
-{% block css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/sidebar.min.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/list.min.css' %}">
-
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/form.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/input.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/checkbox.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/label.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/loader.min.css' %}">
-
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/modal.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/dimmer.min.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'vendors/semantic/components/transition.min.css' %}">
-    {% endif %}
+        </div> <!-- /.docs-content -->
+    </div> <!-- /.main content -->
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{% static 'vendors/semantic/components/sidebar.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/jquery-sticky/jquery.sticky-sidebar.min.js' %}"></script>
 
     <script type="text/javascript">
-       $('.ui.sidebar').sidebar();
-    </script>
+        var chapterObjs = $.ajax('/api/beacon/chapters/?guide_uuid={{ chapter_obj.guide.uuid }}');
+        var explainObjs = $.ajax('/api/beacon/explains/?guide_uuid={{ chapter_obj.guide.uuid }}');
 
-    {% if revision.creator == user.person and revision.status == PUBLISHED or revision.status == DRAFT %}
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/checkbox.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/form.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/modal.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/dimmer.min.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/semantic/components/transition.min.js' %}"></script>
-
-        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
-
-        <script type="text/javascript">
-            var globalParams = {
-                'revision_guide_pk': '{{ revision.chapter.guide.pk }}',
-                'published': '{{ PUBLISHED }}',
-                'draft': '{{ DRAFT }}',
-            }
-
-            // ...
-            // INIT MODAL
-            // ...
-            function initModal(name=null, data=null) {
-                $modal = $('.modal-' + name).modal({
-                    autofocus: false,
-                    closable: false,
-                    onShow: function() {
-                        var $element = $(this);
-                        initChapterForm(data);
-                    },
-                    onHide: function($element) {
-                        var $element = $(this);
-
-                        // Clear values
-                        $element.find('form').removeAttr('data-uuid');
-                        $element.find('form').removeAttr('from-detail');
-                        $element.find('form').form('reset');
-                        $element.find('form').removeClass('loading');
-                        $('#submit-chapter, .cancel').removeClass('disabled');
-                    }
+        $.when(chapterObjs, explainObjs).done(function(chapterRes, explainRes) {
+            var combineChapterExplain = [],
+                chapterItem = '',
+                chapters = chapterRes[0],
+                explains = explainRes[0];
+    
+            $.each(chapters, function(index, value) {
+                var explainFiltered = explains.filter(function(x) {
+                    return x.chapter_uuid === value.uuid;
                 });
 
-                $modal.modal('show');
-            }
-
-            // ...
-            // CLOSE MODAL
-            // ...
-            $(document).on('click', '#cancel', function(event) {
-                event.preventDefault();
-                $('.modal').modal('hide');
+                value.explains = explainFiltered;
+                combineChapterExplain.push(value);
             });
-        </script>
 
-        <script type="text/javascript" src="{% static 'vendors/js/chapter.js' %}"></script>
-    {% endif %}
+            $.each(combineChapterExplain, function(index, value) {
+                var explainsList = '',
+                    explainItem = '',
+                    explains = value.explains,
+                    uuid = value.published ? value.published.uuid : value.draft.uuid,
+                    has_explain = explains.length > 0;
+                
+                if (has_explain) {
+                    $.each(explains, function(ei, ev) {
+                        var rev_uuid = ev.published ? ev.published.uuid : ev.draft.uuid;
+
+                        explainItem += `<li id="item_${ev.id}" data-uuid="${rev_uuid}">
+                            <a href="${ev.permalink}" class="text-dark">
+                                ${ev.published ? ev.published.label : ev.draft.label}
+                                [${ev.published ? ev.published.status : ev.draft.status}]
+                            </a>
+                        </li>`;
+                    });
+
+                    explainsList = `<ul class="list-unstyled pl-3 pt-1 explain-list">${explainItem}</ul>`;
+                }
+
+                chapterItem += `<div id="item_${value.id}" class="chapter-group" data-uuid="${uuid}">
+                    <h3 class="header">
+                        <a href="${value.permalink}" class="text-dark">
+                            ${value.published ? value.published.label : value.draft.label}
+                            [${value.published ? value.published.status : value.draft.status}]
+                        </a>
+                    </h3>
+
+                    ${explainsList}
+                </div>`;
+            });
+
+            if (chapterItem) $('.chapter-list').html(chapterItem);
+
+            $('.chapter-wrap').animate({
+                scrollTop: $('[data-uuid="{{ chapter_uuid }}"]').offset().top - 150
+            }, 0);
+
+            $('.chapter-wrapx').stickySidebar({
+                topSpacing: 60,
+                bottomSpacing: 60,
+                containerSelector: '.docs-nav',
+                innerWrapperSelector: '.chapter-list',
+            });
+        });
+    </script>
 {% endblock %}

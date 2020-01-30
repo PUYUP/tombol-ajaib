@@ -1,0 +1,306 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="ui container main-content">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-8 col-md-7 col-lg-5">
+                <div class="card w-100 mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Validasi Akun</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            Buktikan Anda bukan <i>bot</i>
+                        </h6>
+
+                        <div class="border-top pt-3 mt-3 form">
+                            <div id="showdata"></div>
+                        </div>
+                    </div> <!-- /.card body -->
+                </div> <!-- /.card -->
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+    <script type="text/javascript">
+        var validationItems = [];
+        const validationElement = $('#showdata');
+        const params = {
+            'identifiers': 'email,phone'
+        };
+
+        // INPUT ELEMENT
+        function inputElement(data) {
+            var value = (data.value.object ? data.value.object : ''),
+                is_required = data.is_required,
+                is_verified = data.value.is_verified,
+                identifier = data.identifier,
+                label = data.label,
+                placeholder = (data.placeholder ? data.placeholder : ''),
+                field_type = data.field_type;
+
+            return `<div class="form-group validation-item mb-0">
+                <label for="${identifier}">${label}</label>
+
+                <div class="d-flex w-100">
+                    <div class="pr-2 w-75">
+                        <input type="${field_type}" id="${identifier}" class="form-control" name="${identifier}" ${is_required? 'required' : ''} value="${value}" placeholder="${placeholder}">
+                    </div>
+
+                    <button id="requestChange" class="w-25 btn ${is_verified ? "btn-secondary" : "btn-info"}" ${is_verified ? 'disabled' : ''} data-identifier="${identifier}">
+                        Submit
+                    </button>
+                </div>
+            </div>`;
+        }
+
+        // ...
+        // ELEMENT HANDLER
+        // ...
+        function validationsHandler(data) {
+            var validationDatas = $(document.body).data('validationDatas');
+
+            // Exclude image and file object
+            var filteredFields = validationDatas.filter(function(x) {
+                return x.field_type != 'image' && x.field_type != 'file';
+            });
+
+            $.each(filteredFields, function(index, item) {
+                var htmlItem;
+
+                // INPUT FIELD
+                if (item.field_type !== 'textarea') htmlItem = inputElement(item);
+                if (htmlItem) validationItems.push(htmlItem);
+            });
+
+            // Inject to wrapper and show it!
+            validationElement.html(validationItems.join(''));
+        }
+
+        // ...
+        // LOAD VALIDATIONS
+        // ...
+        async function loadValidations(params) {
+            await $.get('/api/person/validations/', params, function(data) {
+                // Set data to global
+                $(document.body).data('validationDatas', data);
+                
+                // Show validation form
+                validationsHandler(data);
+            })
+            .fail(function(e) {
+                console.log(e);
+            });
+        }
+
+        loadValidations(params);
+
+        // ...
+        // Request validation
+        // System will send SMS or email with validation code
+        // ...
+        $(document).on('click', '#requestChange', function(e) {
+            e.preventDefault();
+            $(this).prop('disabled', true);
+
+            var identifier = $(this).data('identifier'),
+                new_value = $('[name="' + identifier + '"').val(),
+                validationDatas = $(document.body).data('validationDatas'),
+                index = validationDatas.findIndex(x => x.identifier === identifier),
+                validationItem = validationDatas[index];
+
+            // Append new param
+            validationItem.new_value = new_value;
+
+            // Perfom request secure code
+            if (new_value) {
+                requestChange($(this), validationItem);
+
+                // Update data global
+                validationDatas[index] = validationItem;
+                $(document.body).data('validationDatas', validationDatas);
+            }
+
+            if (!new_value) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: validationItem.label + ' tidak boleh kosong.'
+                });
+            }
+        });
+
+        function requestChange($this, data) {
+            var params = {
+                'action': 'request_secure_code',
+                'new_value': data.new_value,
+                'identifier': data.identifier,
+                'csrfmiddlewaretoken': Cookies.get('csrftoken'),
+            }
+
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/secures/',
+                data: params,
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                beforeSend: function(xhr) {
+                    $this.addClass('loading');
+                },
+                success: function(response) {
+                    // Reset cookies
+                    Cookies.remove('secure_hash');
+                    Cookies.remove('secure_hash', {path: ''});
+
+                    // Then set again with new value
+                    Cookies.set('secure_hash', response.secure_hash);
+
+                    // Run validation
+                    confirmSecureCode(data);
+                },
+                error: function(error) {
+                    
+                },
+                complete: function(xhr, status) {
+                    $this.removeClass('loading');
+                }
+            });
+        }
+
+        // ...
+        // Confirm secure code
+        // ...
+        function confirmSecureCode(data) {
+            Swal.fire({
+                title: 'Kode Otentikasi',
+                text: data.instruction,
+                html:
+                    data.instruction +
+                    'Tidak menerima kode otentikasi?<br /><a href="#" id="resend-secure-code" data-identifier="' + data.identifier + '"><b>Kirim ulang</b></a>',
+                input: 'text',
+                inputAttributes: {
+                    autocapitalize: 'on',
+                    placeholder: 'Kode Otentikasi',
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Validasi',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                customClass: {
+                    input: 'input-class text-center text-keyup',
+                },
+                preConfirm: (secureCode) => {
+                    if (secureCode) {
+                        const params = {
+                            'uuid': data.uuid, // validation uuid
+                            'secure_code': secureCode,
+                            'secure_hash': Cookies.get('secure_hash'),
+                            'value': $('input[name="' + data.identifier + '"]').val(),
+                        }
+
+                        return fetch('/api/person/validations/' + data.uuid + '/', {
+                            method: 'PATCH',
+                            cache: 'no-cache',
+                            body: JSON.stringify(params),
+                            headers: {
+                                'X-CSRFToken': Cookies.get('csrftoken'),
+                                'Content-Type': 'application/json',
+                            }
+                        }).then(response => {
+                            if (!response.ok) {
+                                if (response.status == '406') {
+                                    throw new Error('Kode otentikasi salah');
+                                }
+                                throw new Error(response.statusText)
+                            }
+                            return response.json()
+                        })
+                        .catch(error => {
+                            Swal.showValidationMessage(error);
+                        });
+                    }
+                }
+            }).then((result) => {
+                if (result.value) {
+                    Swal.fire({
+                        title: 'Sukses!',
+                        text: 'Validasi ' + data.label + ' Berhasil. Menyegarkan...',
+                        icon: 'success',
+                        showCloseButton: false,
+                        showCancelButton: false,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+
+                    location.reload();
+                    Cookies.remove('secure_hash');
+                }
+
+                // Cancel
+                if (result.dismiss == 'cancel') {
+                    var $validationInput = $('[name="' + data.identifier + '"'),
+                        is_verified = data.value.is_verified,
+                        validationElement = $validationInput.closest('.validation-item');
+            
+                    $validationInput.val(data.value.object);
+
+                    if (is_verified) {
+                        $(validationElement).find('button').prop('disabled', true);
+                        $(validationElement).find('button').addClass('btn-secondary');
+                        $(validationElement).find('button').removeClass('btn-info');
+                    } else {
+                        $(validationElement).find('button').prop('disabled', false);
+                        $(validationElement).find('button').removeClass('btn-secondary');
+                        $(validationElement).find('button').addClass('btn-info');
+                    }
+                }
+            });
+        }
+
+        // ...
+        // Send secure code
+        // ...
+        $(document).on('click', '#resend-secure-code', function(e) {
+            e.preventDefault();
+
+            var identifier = $(this).data('identifier'),
+                validationDatas = $(document.body).data('validationDatas'),
+                index = validationDatas.findIndex(x => x.identifier === identifier),
+                validationItem = validationDatas[index];
+
+            requestChange($(this), validationItem);
+        });
+
+        // ...
+        // Detect value change
+        // ...
+        $(document).on('keyup', '.validation-item input', function(e) {
+            var keyword = $(e.target).val(),
+                identifier = $(e.target).attr('name'),
+                validationElement = $(e.target).closest('.validation-item'),
+                validationDatas = $(document.body).data('validationDatas'),
+                index = validationDatas.findIndex(x => x.identifier === identifier),
+                validationItem = validationDatas[index],
+                is_verified = validationItem.value.is_verified;
+
+            if (keyword == validationItem.value.object && is_verified) {
+                $(validationElement).find('button').prop('disabled', true);
+                $(validationElement).find('button').addClass('btn-secondary');
+                $(validationElement).find('button').removeClass('btn-info');
+            } else {
+                $(validationElement).find('button').prop('disabled', false);
+                $(validationElement).find('button').removeClass('btn-secondary');
+                $(validationElement).find('button').addClass('btn-info');
+            }
+        });
+    </script>
+{% endblock %}

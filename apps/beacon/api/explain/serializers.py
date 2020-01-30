@@ -27,6 +27,7 @@ class ExplainSerializer(serializers.ModelSerializer):
     chapter_uuid = serializers.UUIDField(source='chapter.uuid', read_only=True)
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Explain
@@ -85,3 +86,14 @@ class ExplainSerializer(serializers.ModelSerializer):
 
     def get_draft(self, obj):
         return self.subquery_attribute(obj, 'draft')
+
+    def get_permalink(self, obj):
+        uuid = obj.uuid
+
+        if obj.draft_uuid:
+            uuid = obj.draft_uuid
+
+        if obj.published_uuid:
+            uuid = obj.published_uuid
+
+        return reverse('explain_revision_detail', kwargs={'explain_uuid': uuid})

@@ -22,7 +22,7 @@ class GuideSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Guide
-        fields = ('label', 'category', 'creator', 'permalink_update',)
+        fields = '__all__'
         read_only_fields = ('uuid',)
         extra_kwargs = {
             'creator': {'write_only': True}

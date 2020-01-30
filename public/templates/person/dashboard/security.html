@@ -1,0 +1,390 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="ui container main-content">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-7 col-lg-5">
+                <div class="card w-100 mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Keamanan Akun</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            Jangan pernah bagikan kesiapapun juga
+                        </h6>
+
+                        <div class="border-top pt-3 mt-3 form">
+                            <div id="showdata"></div>
+                        </div>
+                    </div> <!-- /.card body -->
+                </div> <!-- /.card -->
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+    <script type="text/javascript">
+        var securityItems = [];
+        const securityElement = $('#showdata');
+        const params = {
+            'identifiers': 'email,phone'
+        };
+
+        const securitiesData = [
+            {
+                'identifier': 'security_username',
+                'field_type': 'text',
+                'label': 'Nama Pengguna',
+                'value': '{{ user.username }}',
+            },
+            {
+                'identifier': 'security_email',
+                'field_type': 'email',
+                'label': 'Alamat Email',
+                'value': '{{ user.email }}',
+            },
+            {
+                'identifier': 'security_password',
+                'field_type': 'password',
+                'label': 'Kata Sandi Baru (isi untuk merubah)',
+                'value': '',
+            }
+        ];
+
+        // INPUT ELEMENT
+        function inputElement(data) {
+            var value = (data.value ? data.value : ''),
+                identifier = data.identifier,
+                label = data.label,
+                field_type = data.field_type;
+
+            return `<div class="form-group security-item">
+                <label for="${identifier}">${label}</label>
+
+                <div class="d-flex w-100">
+                    <div class="pr-2 w-75">
+                        <input type="${field_type}" id="${identifier}" class="form-control" name="${identifier}" value="${value}">
+                    </div>
+
+                    <button id="requestChange" class="w-25 btn btn-info" data-identifier="${identifier}">
+                        Submit
+                    </button>
+                </div>
+            </div>`;
+        }
+
+        // ...
+        // ELEMENT HANDLER
+        // ...
+        $.each(securitiesData, function(index, item) {
+            var htmlItem = inputElement(item);
+            if (htmlItem) securityItems.push(htmlItem);
+        });
+
+        // Inject to wrapper and show it!
+        securityElement.html(securityItems.join(''));
+
+        // ...
+        // Request security
+        // System will send SMS or email with security code
+        // ...
+        $(document).on('click', '#requestChange', function(e) {
+            e.preventDefault();
+
+            var identifier = $(this).data('identifier'),
+                new_value = $('[name="' + identifier + '"').val(),
+                index = securitiesData.findIndex(x => x.identifier === identifier),
+                securityItem = securitiesData[index];
+
+            // Append new param
+            securityItem.new_value = new_value;
+
+            if (!new_value) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: securityItem.label + ' tidak boleh kosong.'
+                });
+
+                return false;
+            }
+
+            // Perfom request secure code
+            requestChange($(this), securityItem);
+
+            // Update data global
+            securitiesData[index] = securityItem;
+            $(document.body).data('securitiesData', securitiesData);
+            $(this).prop('disabled', true);
+        });
+
+        function requestChange($this, data) {
+            var params = {
+                'action': 'request_secure_code',
+                'value': data.value,
+                'new_value': data.new_value,
+                'identifier': data.identifier,
+                'csrfmiddlewaretoken': Cookies.get('csrftoken'),
+            }
+
+            switch(data.identifier) {
+                case 'security_email':
+                case 'security_username':
+                    duplicateCheck($this, params);
+                    break;
+                case 'security_password':
+                    passwordCheck($this, params);
+                    break;
+                default:
+                    requestSecureCode($this, params);
+            }
+        }
+
+        function requestSecureCode($this, params) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/secures/',
+                data: params,
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                beforeSend: function(xhr) {
+                    $this.addClass('loading');
+                },
+                success: function(response) {
+                    // Reset cookies
+                    Cookies.remove('secure_hash');
+                    Cookies.remove('secure_hash', {path: ''});
+
+                    // Then set again with new value
+                    Cookies.set('secure_hash', response.secure_hash);
+
+                    // Run security
+                    confirmSecureCode(params);
+                },
+                complete: function(xhr, status) {
+                    $this.prop('disabled', false);
+                }
+            });
+        }
+
+        // ...
+        // DUPLICATE CHECK
+        // ...
+        function duplicateCheck($this, params) {
+            var identifier = params.identifier,
+                identifier = identifier.replace('security_', '');
+
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/persons/duplicate-check/',
+                data: {[identifier]: params.new_value},
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                beforeSend: function(xhr) {
+                    $this.addClass('loading');
+                },
+                success: function(response) {
+                    requestSecureCode($this, params);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            if (Array.isArray(item)) {
+                                errorMessage.push(item.join(' '));
+                            } else {
+                                errorMessage.push(item);
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $this.prop('disabled', false);
+                }
+            });
+        }
+
+        // ...
+        // PASSWORD CHECK
+        // ...
+        function passwordCheck($this, params) {
+            var identifier = params.identifier,
+                identifier = identifier.replace('security_', '');
+
+            $.ajax({
+                method: 'POST',
+                url: '/api/person/persons/password-check/',
+                data: {[identifier]: params.new_value},
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                beforeSend: function(xhr) {
+                    $this.addClass('loading');
+                },
+                success: function(response) {
+                    requestSecureCode($this, params);
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            if (Array.isArray(item)) {
+                                errorMessage.push(item.join(' '));
+                            } else {
+                                errorMessage.push(item);
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $this.prop('disabled', false);
+                }
+            });
+        }
+
+        // ...
+        // Confirm secure code
+        // ...
+        function confirmSecureCode(data) {
+            Swal.fire({
+                title: 'Kode Otentikasi',
+                text: data.instruction,
+                html: 'Tidak menerima kode otentikasi?<br /><a href="#" id="resend-secure-code" data-identifier="' + data.identifier + '"><b>Kirim ulang</b></a>',
+                input: 'text',
+                inputAttributes: {
+                    autocapitalize: 'on',
+                    placeholder: 'Kode Otentikasi',
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Validasi',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                customClass: {
+                    input: 'input-class text-center text-keyup',
+                },
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Tidak boleh kosong.'
+                    }
+                },
+                preConfirm: (value) => {
+                    // ...
+                    // VALIDATE CODE
+                    // ...
+                    var identifier = data.identifier,
+                        identifier = identifier.replace('security_', '');
+
+                    const params = {
+                        'secure_code': value,
+                        'secure_hash': Cookies.get('secure_hash'),
+                        [identifier]: $('input[name="' + data.identifier + '"]').val(),
+                    }
+
+                    return fetch('/api/person/persons/{{ user.person.uuid }}/', {
+                        method: 'PATCH',
+                        cache: 'no-cache',
+                        body: JSON.stringify(params),
+                        headers: {
+                            'X-CSRFToken': Cookies.get('csrftoken'),
+                            'Content-Type': 'application/json',
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            if (response.status == '406' || response.status == '400') {
+                                return response.json();
+                            }
+                        }
+                    }).then(error => {
+                        // If error data not empty
+                        if (error) {
+                            var errorMessage = [];
+
+                            $.each(error, function(index, item) {
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(item.join(' '));
+                                } else {
+                                    errorMessage.push(item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            return Swal.showValidationMessage(errorMessage.join('<br /><br />'));
+                        }
+                    });
+                }
+            }).then((result) => {
+                if (result.value) {
+                    Swal.fire({
+                        title: 'Sukses!',
+                        text: 'Tindakan berhasil. Menyegarkan...',
+                        icon: 'success',
+                        showCloseButton: false,
+                        showCancelButton: false,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+
+                    Cookies.remove('secure_hash');
+                    location.reload();
+                }
+
+                // Cancel
+                if (result.dismiss == 'cancel') {
+                    var $securityInput = $('[name="' + data.identifier + '"'),
+                        securityElement = $securityInput.closest('.security-item');
+            
+                    $securityInput.val(data.value);
+                }
+            });
+        }
+
+        // ...
+        // Send secure code
+        // ...
+        $(document).on('click', '#resend-secure-code', function(e) {
+            e.preventDefault();
+
+            var identifier = $(this).data('identifier'),
+                securitiesData = $(document.body).data('securitiesData'),
+                index = securitiesData.findIndex(x => x.identifier === identifier),
+                securityItem = securitiesData[index];
+
+            requestChange($(this), securityItem);
+        });
+    </script>
+{% endblock %}

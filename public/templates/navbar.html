@@ -1,34 +1,39 @@
-<nav class="ui navbar">
-    <div class="ui container">
-        <div class="ui secondary menu m-0 d-flex w-100 align-items-center">
-            <a href="{% url 'home' %}" class="text-dark">
-                <i class="home large link icon"></i>
-            </a>
-            
-            <div class="right menu">
+<nav class="navbar fixed-top navbar-light bg-light navbar-expand-lg pl-0 pr-0">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">Tombol Ajaib</a>
+
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ml-auto">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'dashboard_guide_list' %}" class="ui item">
-                        <i class="file icon"></i>
-                        Panduan
-                    </a>
+                    <li class="nav-item">
+                        <a href="{% url 'person' %}" class="nav-link">
+                            Akun
+                        </a>
+                    </li>
 
-                    <a href="{% url 'person' %}" class="ui item">
-                        Akun
-                    </a>
-
-                    <a href="{% url 'logout' %}" class="ui item">
-                        Keluar
-                    </a>
+                    <li class="nav-item">
+                        <a href="{% url 'logout' %}" class="nav-link">
+                            Keluar
+                        </a>
+                    </li>
                 {% else %}
-                    <a href="{% url 'register' %}" class="ui item">
-                        Daftar
-                    </a>
+                    <li class="nav-item">
+                        <a href="{% url 'register' %}" class="nav-link">
+                            Daftar
+                        </a>
+                    </li>
 
-                    <a href="{% url 'login' %}" class="ui item">
-                        Masuk
-                    </a>
+                    <li class="nav-item">
+                        <a href="{% url 'login' %}" class="nav-link">
+                            Masuk
+                        </a>
+                    </li>
                 {% endif %}
-            </div>
-        </div> <!-- /.menu -->
-    </div> <!-- /.container -->
+            </ul>
+        </div>
+    </div>
 </nav>
