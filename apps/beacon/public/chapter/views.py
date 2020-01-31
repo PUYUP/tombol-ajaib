@@ -22,7 +22,7 @@ Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
 
 
-class ChapterRevisionDetailView(View):
+class ChapterDetailView(View):
     template_name = 'templates/chapter/detail.html'
     context = dict()
 
@@ -38,7 +38,7 @@ class ChapterRevisionDetailView(View):
         # ...
         # ChapterRevision objects in Subquery
         # ...
-        revision_objs = ChapterRevision.objects.filter(chapter__id=OuterRef('chapter__id'))
+        revision_objs = ChapterRevision.objects.filter(chapter__id=OuterRef('id'))
         revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
 
         # ...
@@ -55,18 +55,19 @@ class ChapterRevisionDetailView(View):
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
         try:
-            queryset = ChapterRevision.objects \
-                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('chapter'), Prefetch('guide')) \
-                .select_related('creator', 'creator__user', 'chapter', 'guide') \
+            queryset = Chapter.objects \
+                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
+                .select_related('creator', 'creator__user', 'guide') \
                 .filter(uuid=chapter_uuid) \
                 .annotate(
                     **draft_fields,
                     **published_fields) \
-                .exclude(~Q(creator__id=person_pk), ~Q(status=PUBLISHED)) \
+                .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Tidak ditemukan."))
 
+        """
         # ...
         # ChapterRevision objects in Subquery
         # ...
@@ -171,18 +172,7 @@ class ChapterRevisionDetailView(View):
 
         eri = sorted(res.items(), key=lambda item: item[0].sort_stage)
         ero = {k: v for k, v in eri}
-        print(ero)
-        ema = {}
-        hma = []
-        for key, value in res.items():
-            ema = {
-                'sort_stage': key.sort_stage,
-                'chapter': key,
-                'explains': value
-            }
-            hma.append(ema)
-        
-        unit_list = sorted(hma, key = lambda i: i['sort_stage'])
+        """
 
         self.context['title'] = queryset.label
         self.context['chapter_uuid'] = chapter_uuid
@@ -190,6 +180,5 @@ class ChapterRevisionDetailView(View):
         self.context['status_choices'] = status_choices
         self.context['PUBLISHED'] = PUBLISHED
         self.context['DRAFT'] = DRAFT
-        self.context['res'] = ero
-        self.context['unit_list'] = unit_list
+        # self.context['res'] = ero
         return render(request, self.template_name, self.context)

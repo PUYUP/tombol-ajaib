@@ -7,22 +7,32 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container main-content d-flex pt-0">
-        <div class="docs-nav pr-4 align-self-stretch position-relative">
-            <div class="tools d-flex w-100 align-items-center">
-                {% if guide_obj.creator.id == person_pk %}
-                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
-                        Tambah Bab
-                    </button>
-                {% else %}
-                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
-                        Tampilkan Semua
-                    </button>
-                {% endif %}
-            </div>
+    <div class="container main-content d-flex">
+        <div id="docs-nav" class="docs-nav pr-4 align-self-stretch">
+            <div class="docs-nav__inner">
+                <div class="tools d-flex w-100 align-items-center">
+                    {% if guide_obj.creator.id == person_pk %}
+                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                            Tambah Bab
+                        </button>
+                    {% else %}
+                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
+                            Tampilkan Semua
+                        </button>
+                    {% endif %}
+                </div>
 
-            <div class="chapter-wrap h-100">
-                <div class="chapter-list pr-3 pb-3 pt-2"></div>
+                <div class="chapter-wrap docs-scroller">
+                    <div class="chapter-list pr-3 pb-3 pt-2">
+                        <div class="chapter-group">
+                            <h3 class="header">
+                                <a href="{% url 'guide_detail' explain_obj.guide.uuid %}" class="text-dark">
+                                    Pengantar
+                                </a>
+                            </h3>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div> <!-- /.docs-nav -->
 
@@ -68,18 +78,18 @@
 
                         explainItem += `<li id="item_${ev.id}" data-uuid="${rev_uuid}">
                             <a href="${ev.permalink}" class="text-dark">
-                                ${ev.published ? ev.published.label : ev.label}
+                                ${ev.printed_label}
                             </a>
                         </li>`;
                     });
 
-                    explainsList = `<ul class="list-unstyled pl-3 pt-1 explain-list">${explainItem}</ul>`;
+                    explainsList = `<ul class="list-unstyled pl-2 pt-1 explain-list">${explainItem}</ul>`;
                 }
 
                 chapterItem += `<div id="item_${value.id}" class="chapter-group" data-uuid="${uuid}">
                     <h3 class="header">
                         <a href="${value.permalink}" class="text-dark">
-                            ${value.published ? value.published.label : value.draft.label}
+                            ${value.printed_label}
                         </a>
                     </h3>
 
@@ -87,7 +97,7 @@
                 </div>`;
             });
 
-            if (chapterItem) $('.chapter-list').html(chapterItem);
+            if (chapterItem) $('.chapter-list').append(chapterItem);
 
             $('.chapter-wrap').animate({
                 scrollTop: $('[data-uuid="{{ explain_uuid }}"]').offset().top - 150

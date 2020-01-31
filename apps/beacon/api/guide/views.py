@@ -1,9 +1,10 @@
 from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import (
-    Count, OuterRef, Subquery, Case, When, Prefetch, Q)
+    Count, OuterRef, Subquery, Case, When, Prefetch, Q, F)
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
+from django.core.exceptions import ObjectDoesNotExist
 
 # DRF
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -59,25 +60,39 @@ class GuideApiView(viewsets.ViewSet):
             # action is not set return default permission_classes
             return [permission() for permission in self.permission_classes]
 
-    def list(self, request, format=None):
-        context = {'request': self.request}
-        params = request.query_params
+    # Return a response
+    def get_response(self, serializer, serializer_parent=None, *args, **kwargs):
+        """ Output to endpoint """
+        response = dict()
+        limit = kwargs.get('limit', None)
 
+        if serializer.data and limit:
+            response['count'] = int(limit)
+
+        if not limit:
+            if serializer_parent is not None:
+                response['media'] = serializer_parent.data
+
+            response['count'] = PAGINATOR.page.paginator.count
+            response['navigate'] = {
+                'previous': PAGINATOR.get_previous_link(),
+                'next': PAGINATOR.get_next_link()
+            }
+        response['results'] = serializer.data
+        return Response(response, status=response_status.HTTP_200_OK)
+
+    def get_object(self, request, uuid=None, extend_fields=list()):
         person_pk = request.person_pk
-        person_uuid = params.get('person_uuid', None)
-
-        # Person UUID defined
-        if person_uuid:
-            person_uuid = check_uuid(uid=person_uuid)
-
-            if not person_uuid:
-                raise NotAcceptable(detail=_("Person UUID invalid."))
 
         # ...
         # GudeRevision objects in Subquery
         # ...
         revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        revision_fields = ['uuid', 'label', 'version', 'status', 'date_created']
+
+        # More fields?
+        if len(extend_fields) > 0:
+            revision_fields = revision_fields + extend_fields
 
         # ...
         # Collection fro Annotate
@@ -106,11 +121,33 @@ class GuideApiView(viewsets.ViewSet):
                 **published_fields) \
             .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
 
+        if uuid:
+            try:
+                queryset = queryset.filter(uuid=uuid).get()
+            except ObjectDoesNotExist:
+                raise NotFound()
+        return queryset
+
+    def list(self, request, format=None):
+        context = {'request': self.request}
+        params = request.query_params
+        person_uuid = params.get('person_uuid', None)
+
+        # Person UUID defined
+        if person_uuid:
+            person_uuid = check_uuid(uid=person_uuid)
+
+            if not person_uuid:
+                raise NotAcceptable(detail=_("Person UUID invalid."))
+
+        # Get object...
+        queryset = self.get_object(request)
+
         if person_uuid:
             queryset = queryset.filter(creator__uuid=person_uuid)
 
         if not queryset.exists():
-            raise NotFound(_("Not found."))
+            raise NotFound()
 
         queryset_paginate = PAGINATOR.paginate_queryset(queryset, request)
         serializer = GuideListSerializer(queryset_paginate, many=True, context=context)
@@ -126,26 +163,19 @@ class GuideApiView(viewsets.ViewSet):
 
         return Response(response, status=response_status.HTTP_200_OK)
 
-    # Return a response
-    def get_response(self, serializer, serializer_parent=None, *args, **kwargs):
-        """ Output to endpoint """
-        response = dict()
-        limit = kwargs.get('limit', None)
+    def retrieve(self, request, uuid=None):
+        context = {'request': self.request}
 
-        if serializer.data and limit:
-            response['count'] = int(limit)
+        uuid = check_uuid(uid=uuid)
+        if not uuid:
+            raise NotAcceptable(detail=_("UUID invalid."))
 
-        if not limit:
-            if serializer_parent is not None:
-                response['media'] = serializer_parent.data
+        extend_fields = ['description']
 
-            response['count'] = PAGINATOR.page.paginator.count
-            response['navigate'] = {
-                'previous': PAGINATOR.get_previous_link(),
-                'next': PAGINATOR.get_next_link()
-            }
-        response['results'] = serializer.data
-        return Response(response, status=response_status.HTTP_200_OK)
+        # Get object...
+        queryset = self.get_object(request, uuid=uuid, extend_fields=extend_fields)
+        serializer = GuideListSerializer(queryset, many=False, context=context)
+        return Response(serializer.data, status=response_status.HTTP_200_OK)
 
     @method_decorator(never_cache)
     @transaction.atomic

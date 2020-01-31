@@ -1,11 +1,11 @@
 from django.urls import path, include
 
 from .views import (
-    ExplainRevisionEditorView, ExplainRevisionDetailView)
+    ExplainEditorView, ExplainDetailView)
 
 urlpatterns = [
-    path('<uuid:explain_uuid>/', ExplainRevisionDetailView.as_view(),
-         name='explain_revision_detail'),
-    path('<uuid:explain_uuid>/change/', ExplainRevisionEditorView.as_view(),
-         name='explain_revision_editor'),
+    path('<uuid:explain_uuid>/', ExplainDetailView.as_view(),
+         name='explain_detail'),
+    path('<uuid:explain_uuid>/change/', ExplainEditorView.as_view(),
+         name='explain_editor'),
 ]

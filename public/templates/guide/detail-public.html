@@ -1,0 +1,34 @@
+<div class="border-bottom mb-4 pb-3">
+    <h1 class="mb-2 mt-0">
+        {% if guide_obj.published_label %}
+            {{ guide_obj.published_label }}
+        {% else %}
+            {{ guide_obj.draft_label }}
+        {% endif %}
+    </h1>
+
+    <span class="text-muted">
+        Revisi {{ guide_obj.published_version }} &nbsp;|&nbsp; Pembaruan {{ guide_obj.date_updated }}
+    </span>
+</div>
+
+<div class="form-group">
+    <p class="mb-0">{{ guide_obj.published_description }}</p>
+</div>
+
+<div class="form-group">
+    <label for="changelog">Changelog</label>
+    <p class="mb-0">{{ guide_obj.published_changelog }}</p>
+</div>
+
+{% if introduction_published_objs %}
+    <div class="form-group">
+        <label>Sorotan</label>
+    
+        <ol class="pl-3 introduction-list">
+            {% for item in introduction_published_objs %}
+                <li>{{ item.description }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

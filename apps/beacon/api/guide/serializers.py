@@ -19,6 +19,8 @@ Guide = get_model('beacon', 'Guide')
 class GuideSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
     permalink_update = serializers.SerializerMethodField(read_only=True)
+    url = serializers.HyperlinkedIdentityField(
+        view_name='beacons:guide-detail', lookup_field='uuid', read_only=True)
 
     class Meta:
         model = Guide
@@ -50,6 +52,8 @@ class GuideSerializer(serializers.ModelSerializer):
 class GuideListSerializer(serializers.ModelSerializer):
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)
+    url = serializers.HyperlinkedIdentityField(
+        view_name='beacons:guide-detail', lookup_field='uuid', read_only=True)
 
     class Meta:
         model = Guide

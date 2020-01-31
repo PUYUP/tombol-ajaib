@@ -6,99 +6,51 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container main-content d-flex pt-0">
-        <div class="docs-nav pr-4 align-self-stretch position-relative">
-            <div class="tools d-flex w-100 align-items-center">
-                {% if guide_obj.creator.id == person_pk %}
-                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
-                        Tambah Bab
-                    </button>
-                {% else %}
-                    <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
-                        Tampilkan Semua
-                    </button>
-                {% endif %}
-            </div>
+    <div class="container main-content d-flex">
+        <div id="docs-nav" class="docs-nav pr-4 align-self-stretch">
+            <div class="docs-nav__inner">
+                <div class="tools d-flex w-100 align-items-center">
+                    {% if guide_obj.creator.id == person_pk %}
+                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter" data-backdrop="true">
+                            Tambah Bab
+                        </button>
+                    {% else %}
+                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter" data-backdrop="true">
+                            Tampilkan Semua
+                        </button>
+                    {% endif %}
+                </div>
 
-            <div class="chapter-wrap h-100">
-                <div class="chapter-list pr-3 pb-3 pt-2"></div>
+                <div class="chapter-wrap docs-scroller">
+                    <div class="chapter-list pr-3 pb-3 pt-2">
+                        <div class="chapter-group">
+                            <h3 class="header">
+                                <a href="{% url 'guide_detail' guide_obj.uuid %}" class="text-dark">
+                                    Pengantar
+                                </a>
+                            </h3>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div> <!-- /.docs-nav -->
 
         <div class="docs-content flex-grow-1">
-            EF
+            {% if guide_obj.creator.id == person_pk %}
+                {% include 'templates/guide/detail-editor.html' with guide_obj=guide_obj introduction_draft_objs=introduction_draft_objs introduction_published_objs=introduction_published_objs %}
+            {% else %}
+                 {% include 'templates/guide/detail-public.html' with guide_obj=guide_obj introduction_published_objs=introduction_published_objs %}
+            {% endif %}
         </div> <!-- /.docs-content -->
     </div> <!-- /.main content -->
-
-    {% if guide_obj.creator.id == person_pk %}
-        <div class="modal fade" id="modalAddChapter" role="dialog" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Tambah Bab</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-
-                    <div class="modal-body">
-                        <form class="form-chapter w-100">
-                            <div class="form-group">
-                                <label for="label">Label</label>
-                                <input type="text" id="label" class="form-control" name="label" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="status">Status</label>
-
-                                {% for item in status_choices %}
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="status" id="status_{{ item.0 }}" value="{{ item.0 }}" required>
-                                        <label class="form-check-label" for="status_{{ item.0 }}">
-                                            {{ item.1 }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
-                            </div>
-
-                            <div class="form-group">
-                                <label for="description">
-                                    Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span>
-                                </label>
-
-                                <textarea id="description" class="form-control" name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="changelog">Changelog</label>
-                                <textarea id="changelog" class="form-control" name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
-                            </div>
-
-                            <input type="hidden" name="guide" value="{{ guide_obj.id }}">
-
-                            <div class="mt-4 d-flex w-100 border-top pt-4">
-                                <button type="button" class="btn btn-secondary mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
-
-                                <button type="submit" class="btn btn-info pl-4 pr-4 ml-auto d-flex align-items-center">
-                                    <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-
-                                    Simpan
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div> <!-- /.modal add chapter -->
-    {% endif %}
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{% static 'vendors/jquery-sticky/jquery.sticky-sidebar.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/scripts/chapter.js' %}"></script>
 
     {% if guide_obj.creator.id == person_pk %}
+        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
         <script type="text/javascript">
             $(document).on('submit', '.form-chapter', function(event) {
                 event.preventDefault();
@@ -119,7 +71,7 @@
             // ...
             // SUBMIT CHAPTER HANDLER
             // ...
-            function submitChapterHandler($form = null, $data) {
+            function submitChapterHandler($form=null, $data) {
                 $.ajax({
                     method: "POST",
                     url: '/api/beacon/chapters/',
@@ -178,61 +130,378 @@
                     }
                 });
             }
+
+            // ...
+            // UPDATE Guide
+            // ...
+            $(document).on('click', '#update-guide', function(e) {
+                e.preventDefault();
+   
+                var data = {
+                    'guide_uuid': $(this).data('uuid'),
+                }
+
+                submitHandler($(this), data);
+            });
+
+            // ...
+            // SAVE Guide
+            // ...
+            $(document).on('submit', '.form-guide', function(event) {
+                event.preventDefault();
+
+                var formValuesObj = getFormValues($(this));
+                var saveValuesObj = {};
+                var status = $(this).find('button[type=submit]:focus').data('status');
+
+                $.each(formValuesObj, function(i, v) {
+                    saveValuesObj[i] = v.value;
+                });
+
+                if (status === '{{ PUBLISHED }}') {
+                    Swal.fire({
+                        title: 'Konfirmasi Penerbitan',
+                        text: 'Apakah yakin tindakan ini?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Konfirmasi',
+                        showLoaderOnConfirm: true,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    }).then((result) => {
+                        if (result.value) {
+                            saveValuesObj.status = '{{ PUBLISHED }}';
+                            submitHandler($(this), saveValuesObj, true);
+                        }
+                    });
+
+                    return false;
+                }
+
+                if (status === '{{ DRAFT}}') {
+                    submitHandler($(this), saveValuesObj, true);
+                }
+
+                $(this).find('button').prop('disabled', true);
+                $(this).find('button').find('.spinner').removeClass('d-none');
+            });
+
+            // ...
+            // SUBMIT HANDLER
+            // ...
+            function submitHandler($form=null, $data, is_patch=false) {
+                var method = 'POST',
+                    url = '/api/beacon/guides-revisions/';
+
+                // PATCH Action (Update)
+                if (is_patch === true) {
+                    method = 'PATCH';
+                    url = '/api/beacon/guides-revisions/{{ guide_obj.draft_uuid }}/';
+                }
+
+                $.ajax({
+                    method: method,
+                    url: url,
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$data
+                    },
+                    success: function(response) {
+                        if (is_patch === false) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Pembaruan Berhasil',
+                                text: 'Menyiapkan editor...',
+                                showCancelButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                            });
+
+                            window.location.reload();
+                        }
+
+                        if (is_patch === true) {
+                            if (response.status === '{{ PUBLISHED }}') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Publikasi Berhasil',
+                                    text: 'Sedang mengalihkan...',
+                                    showCancelButton: false,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                });
+
+                                window.location.reload();
+                            }
+
+                            if (response.status === '{{ DRAFT }}') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Sukses',
+                                    text: 'Pembaruan berhasil.',
+                                });
+                            }
+                        }
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    },
+                    complete: function(xhr, status) {
+                        $form.find('button').prop('disabled', false);
+                        $form.find('button').find('.spinner').addClass('d-none');
+                    }
+                });
+            }
+
+            // ...
+            // SUBMIT Introduction
+            // ...
+            var $inputIntroduction = `<div class="form form-introduction mb-3">
+                <div class="form-group">
+                    <textarea class="form-control w-100" name="description" placeholder="Ketik sorotan..."></textarea>
+                </div>
+
+                <button type="submit" id="saveIntroduction" class="btn btn-outline-info btn-sm pl-4 pr-4">
+                    <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    
+                    Simpan
+                </button>
+
+                <button type="button" id="cancelAddIntroduction" class="btn btn-sm pl-4 pr-4 ml-1">Batal</button>
+            </div>`;
+
+            $(document).on('click', '#addIntroduction', function(event) {
+                event.preventDefault();
+                $(this).hide();
+
+                $('.introduction-list').append('<li class="add-introduction pt-2">' + $inputIntroduction + '</li>');
+            });
+
+            $(document).on('click', '#cancelAddIntroduction', function(event) {
+                event.preventDefault();
+
+                $('#addIntroduction').show();
+                $('.add-introduction').remove();
+                $(this).closest('.form').remove();
+            });
+
+            $(document).on('click', '#saveIntroduction', function(event) {
+                event.preventDefault();
+
+                var $form = $(this).closest('.form'),
+                    uuid = $(this).data('uuid'),
+                    description = $form.find('[name="description"]').val();
+                
+                var data = {
+                    uuid: uuid,
+                    object_id: '{{ guide_obj.draft_id }}',
+                    content_type: '{{ content_type.id }}',
+                    description: description,
+                }
+
+                if (description) {
+                    submitIntroductionHandler($form, data);
+
+                    $(this).prop('disabled', true);
+                    $(this).find('.spinner').removeClass('d-none');
+                }
+            });
+
+            // ...
+            // UPDATE Introduction
+            // ...
+            $(document).on('click', '#updateIntroduction', function(event) {
+                event.preventDefault();
+
+                var uuid = $(this).data('uuid'),
+                    description = $(this).closest('li').find('span').html();
+                
+                $('#addIntroduction').hide();
+                $('<li class="add-introduction pt-2">' + $inputIntroduction + '</li>').insertBefore('li#introduction_' + uuid);
+                $('.add-introduction textarea').val(description);
+                $('.add-introduction #saveIntroduction').attr('data-uuid', uuid);
+            });
+
+            $(document).on('click', '#deleteObject', function(event) {
+                event.preventDefault();
+
+                var uuid = $(this).data('uuid');
+ 
+                Swal.fire({
+                    title: 'Konfirmasi Penghapusan',
+                    text: 'Apakah yakin tindakan ini?',
+                    showCancelButton: true,
+                    confirmButtonText: 'Konfirmasi',
+                    showLoaderOnConfirm: true,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.value) {
+                        deleteHandler(uuid, 'introductions');
+                    }
+                });
+            });
+
+            // ...
+            // SUBMTI Introduction Handler
+            // ...
+            function submitIntroductionHandler($form=null, $data) {
+                var uuid = $data.uuid,
+                    method = 'POST',
+                    url = '/api/beacon/introductions/';
+
+                // IF EDIT UUID Exist
+                if (uuid) {
+                    method = 'PATCH';
+                    url = '/api/beacon/introductions/' + uuid + '/';
+                }
+
+                $.ajax({
+                    method: method,
+                    url: url,
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$data,
+                    },
+                    success: function(response) {
+                        if (uuid) {
+                            $('#introduction_' + response.uuid + ' span').html(response.description);
+                        }
+
+                        if (!uuid) {
+                            var item = `<li id="introduction_${response.uuid}">
+                                <span>${response.description}</span>
+
+                                <a href="#" id="updateIntroduction" class="ml-2" data-uuid="${response.uuid}">Sunting</a>
+                                <a href="#" id="deleteObject" class="text-danger ml-2" data-uuid="${response.uuid}">Hapus</a>
+                            </li>`;
+
+                            $('.introduction-list').append(item);
+                        }
+
+                        $('#addIntroduction').show();
+                        $('.add-introduction').remove();
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    },
+                    complete: function(xhr, status) {
+                        $form.find('button').prop('disabled', false);
+                        $form.find('button').find('.spinner').addClass('d-none');
+                    }
+                });
+            }
+
+            // ...
+            // DELETE HANDLER
+            // ...
+            function deleteHandler(uuid, path, redirectTo=null) {
+                $.ajax({
+                    method: 'DELETE',
+                    url: '/api/beacon/' + path + '/' + uuid + '/',
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Terhapus!',
+                            text: 'Sedang mengalihkan...',
+                            showCloseButton: false,
+                            showCancelButton: false,
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                        });
+
+                        setTimeout(function() {
+                            if (redirectTo) window.location.href = redirectTo;
+                            if (!redirectTo) window.location.reload();
+                        }, 1000);
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    }
+                });
+            }
         </script>
     {% endif %}
 
     <script type="text/javascript">
-        var chapterObjs = $.ajax('/api/beacon/chapters/?guide_uuid={{ guide_obj.uuid }}');
-        var explainObjs = $.ajax('/api/beacon/explains/?guide_uuid={{ guide_obj.uuid }}');
-
-        $.when(chapterObjs, explainObjs).done(function(chapterRes, explainRes) {
-            var combineChapterExplain = [],
-                chapterItem = '',
-                chapters = chapterRes[0],
-                explains = explainRes[0];
-    
-            $.each(chapters, function(index, value) {
-                var explainFiltered = explains.filter(function(x) {
-                    return x.chapter_uuid === value.uuid;
-                });
-
-                value.explains = explainFiltered;
-                combineChapterExplain.push(value);
-            });
-
-            $.each(combineChapterExplain, function(index, value) {
-                var explainsList = '',
-                    explainItem = '',
-                    explains = value.explains,
-                    uuid = value.published ? value.published.uuid : value.draft.uuid,
-                    has_explain = explains.length > 0;
-                
-                if (has_explain) {
-                    $.each(explains, function(ei, ev) {
-                        var rev_uuid = ev.published ? ev.published.uuid : ev.draft.uuid;
-
-                        explainItem += `<li id="item_${ev.id}" data-uuid="${rev_uuid}">
-                            <a href="${ev.permalink}" class="text-dark">
-                                ${ev.published ? ev.published.label : ev.label}
-                            </a>
-                        </li>`;
-                    });
-
-                    explainsList = `<ul class="list-unstyled pl-3 pt-1 explain-list">${explainItem}</ul>`;
-                }
-
-                chapterItem += `<div id="item_${value.id}" class="chapter-group" data-uuid="${uuid}">
-                    <h3 class="header">
-                        <a href="${value.permalink}" class="text-dark">
-                            ${value.published ? value.published.label : value.draft.label}
-                        </a>
-                    </h3>
-
-                    ${explainsList}
-                </div>`;
-            });
-
-            if (chapterItem) $('.chapter-list').html(chapterItem);
-        });
+        loadChapter('{{ guide_obj.uuid }}');
     </script>
 {% endblock %}

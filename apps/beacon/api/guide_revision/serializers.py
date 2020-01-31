@@ -12,7 +12,7 @@ from rest_framework.exceptions import NotAcceptable, NotFound
 from utils.generals import get_model, check_uuid
 
 # LOCAL UTILS
-from apps.beacon.utils.constant import DRAFT, REJECTED
+from apps.beacon.utils.constant import DRAFT, REJECTED, PUBLISHED
 
 # PERSON APP UTILS
 from apps.person.utils.auths import CurrentPersonDefault
@@ -23,8 +23,8 @@ GuideRevision = get_model('beacon', 'GuideRevision')
 
 class GuideRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
-    permalink = serializers.SerializerMethodField(read_only=True)
-    permalink_update = serializers.SerializerMethodField(read_only=True)
+    # permalink = serializers.SerializerMethodField(read_only=True)
+    # permalink_update = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = GuideRevision
@@ -39,38 +39,28 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         context = kwargs.get('context', None)
 
         request = context.get('request', None)
-        revision_uuid = data.get('revision_uuid', None)
-        uuid = data.get('uuid', None)
-        person = request.person
+        guide_uuid = data.get('guide_uuid', None)
+        person_pk = request.person_pk
 
         # Validate uuid
-        revision_uuid = check_uuid(uid=revision_uuid)
-        uuid = check_uuid(uid=uuid)
+        guide_uuid = check_uuid(uid=guide_uuid)
 
         """
-        Manipulasi;
-        Jika revision dengan status DRAFT ada maka ambil dan sunting kembali
-        Jika revision dnegan status DRAFT tidak ada maka buat revision baru
-        dengan data berasal dari revisi PUBLISHED terakhir
+        With this we create a new Revision
+        The data based on last PUBLISHED or DRAFT previous revisions
         """
-        if revision_uuid and uuid:
+        if guide_uuid:
             # mutable data
             _mutable = data._mutable
             kwargs['data']._mutable = True
 
-            # get last DRAFT
-            revision_obj = GuideRevision.objects.filter(
-                creator=person, guide__uuid=uuid,
-                status=DRAFT).first()
+            # get last DRAFT or PUBLISHED
+            revision_obj = GuideRevision.objects \
+                .filter(
+                    Q(creator__id=person_pk), Q(guide__uuid=guide_uuid),
+                    Q(status=DRAFT) | Q(status=PUBLISHED)).first()
 
-            # get current GuideRevision
-            if not revision_obj:
-                try:
-                    revision_obj = GuideRevision.objects.get(
-                        creator=person, uuid=revision_uuid, guide__uuid=uuid)
-                except ObjectDoesNotExist:
-                    revision_obj = None
-
+            # Prepare new DRAFT data
             if revision_obj:
                 kwargs['data']['guide'] = revision_obj.guide_id
                 kwargs['data']['label'] = revision_obj.label
@@ -96,8 +86,8 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
 
         # redirect to editor if update from previous revision
         if revision_uuid:
-            return reverse('guide_revision_editor', kwargs={'revision_uuid': obj.uuid})
-        return reverse('guide_revision_detail', kwargs={'revision_uuid': obj.uuid})
+            return reverse('guide_ditor', kwargs={'guide_uuid': obj.uuid})
+        return reverse('guide_detail', kwargs={'guide_uuid': obj.uuid})
 
     def get_permalink_update(self, obj):
         return reverse('dashboard_guide_detail', kwargs={'guide_uuid': obj.uuid})
@@ -107,25 +97,29 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         try:
             request = self.context['request']
         except KeyError:
-            raise NotAcceptable()
+            raise NotAcceptable(detail=_("Request not define."))
 
         # Append request to objects
         setattr(GuideRevision, 'request', request)
 
         # get variable
+        person_pk = request.person_pk
         label = request.data.get('label', None)
-        person = request.person
-        uuid = request.data.get('uuid', None)
-        uuid = check_uuid(uid=uuid)
+        guide_uuid = request.data.get('guide_uuid', None)
+        guide_uuid = check_uuid(uid=guide_uuid)
 
-        if not uuid:
-            raise NotAcceptable()
+        if not guide_uuid:
+            raise NotAcceptable(detail=_("Guide UUID invalid."))
 
-        revision_obj, created = GuideRevision.objects \
-            .filter(Q(guide__uuid=uuid), Q(status=DRAFT)) \
+        # If Revision with DRAFT status appear, get it
+        # If not create new
+        obj, created = GuideRevision.objects \
+            .filter(Q(guide__uuid=guide_uuid), Q(status=DRAFT)) \
             .get_or_create(**validated_data, defaults={'label': label})
 
-        if revision_obj and created:
+        # If revision is new we need create Introductions
+        # And then assign them
+        if obj and created:
             # get instance from init
             instance = self.context.get('instance', None)
 
@@ -141,12 +135,12 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
 
                     for item in introductions:
                         intro_obj = intro_model(
-                            creator=person,
-                            content_object=revision_obj,
+                            creator_id=person_pk,
+                            content_object=obj,
                             description=item.description)
                         intro_collection.append(intro_obj)
                     intro_model.objects.bulk_create(intro_collection)
-        return revision_obj
+        return obj
 
     def update(self, instance, validated_data):
         # only revision with status is DRAFT allow to update

@@ -94,13 +94,13 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
         revision_uuid = request.data.get('revision_uuid', None)
 
         reverse_params = {
-            'revision_uuid': obj.uuid
+            'chapter_uuid': obj.uuid
         }
 
         # redirect to editor if update from previous revision
         if revision_uuid:
-            return reverse('explain_revision_editor', kwargs=reverse_params)
-        return reverse('explain_revision_detail', kwargs=reverse_params)
+            return reverse('explain_editor', kwargs=reverse_params)
+        return reverse('explain_detail', kwargs=reverse_params)
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):

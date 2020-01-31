@@ -1,7 +1,6 @@
 from django.urls import path, include
 
-# Guide Views
-from .views import (
+from public.views.guide.general import (
     GuideListView, GuideEditorView,
     GuideDetailView)
 

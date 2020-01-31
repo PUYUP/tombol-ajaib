@@ -88,12 +88,4 @@ class ExplainSerializer(serializers.ModelSerializer):
         return self.subquery_attribute(obj, 'draft')
 
     def get_permalink(self, obj):
-        uuid = obj.uuid
-
-        if obj.draft_uuid:
-            uuid = obj.draft_uuid
-
-        if obj.published_uuid:
-            uuid = obj.published_uuid
-
-        return reverse('explain_revision_detail', kwargs={'explain_uuid': uuid})
+        return reverse('explain_detail', kwargs={'explain_uuid': obj.uuid})

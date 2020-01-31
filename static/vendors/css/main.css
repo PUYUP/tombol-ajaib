@@ -1,5 +1,15 @@
+label {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.h1, h1 {
+    font-size: 30px;
+}
+
 .main-content {
-    padding-top: 75px;
+    padding-top: 65px;
+    padding-bottom: 65px;
 }
 
 .validation-item + .validation-item {
@@ -9,22 +19,17 @@
 /***
  * Docs nav
  */
-.docs-nav {
-    height: calc(100vh - 60px);
-}
-
-.docs-nav,
-.docs-content {
-    padding-top: 75px;
+.docs-scroller {
+    height: calc(100vh - 132px);
 }
 
 .docs-nav .tools {
-    height: 60px;
+    height: 75px;
 }
 
 .docs-nav .header {
-    font-size: 17px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 700;
     line-height: 1.2em;
 }
 
@@ -36,7 +41,6 @@
 
 .docs-nav .explain-list {
     font-size: 14px;
-
 }
 
 .docs-nav .explain-list li + li {
@@ -48,10 +52,21 @@
     overflow-y: auto;
 }
 
-.chapter-list {
+.docs-nav {
+    will-change: min-height;
+}
+
+.docs-nav__inner {
     transform: translate(0, 0); /* For browsers don't support translate3d. */
     transform: translate3d(0, 0, 0);
     will-change: position, transform;
+}
+
+/***
+ * Editor
+ */
+.add-introduction + li {
+    display: none !important;
 }
 
 @media (min-width: 992px) {
@@ -62,16 +77,33 @@
     .docs-nav {
         flex: 0 0 325px;
     }
-}
 
-@media (max-width: 560px) {
-    .validation-item button {
-        font-size: 13px;
+    .docs-nav .docs-nav__inner {
+        position: fixed;
+        left: auto;
+        bottom: 0;
+        top: 56px;
+        right: auto;
+        width: calc(325px - 1.5rem);
     }
 }
 
 @media (max-width: 992px) {
+    .h1, h1 {
+        font-size: 27px;
+    }
+
     .container, .container-lg, .container-md, .container-sm {
         max-width: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .h1, h1 {
+        font-size: 22px;
+    }
+
+    .validation-item button {
+        font-size: 13px;
     }
 }

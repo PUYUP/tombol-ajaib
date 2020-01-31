@@ -16,11 +16,12 @@ from utils.generals import get_model, check_uuid
 from apps.beacon.utils.constant import (
     DRAFT, PUBLISHED, STATUS_CHOICES)
 
+Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
 
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
-class ExplainRevisionEditorView(View):
+class ExplainEditorView(View):
     template_name = 'templates/explain/editor-revision.html'
     context = dict()
 
@@ -51,7 +52,7 @@ class ExplainRevisionEditorView(View):
         return render(request, self.template_name, self.context)
 
 
-class ExplainRevisionDetailView(View):
+class ExplainDetailView(View):
     template_name = 'templates/explain/detail.html'
     context = dict()
 
@@ -66,8 +67,8 @@ class ExplainRevisionDetailView(View):
         # ...
         # ExplainRevision objects in Subquery
         # ...
-        revision_objs = ExplainRevision.objects.filter(chapter__id=OuterRef('chapter__id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        revision_objs = ExplainRevision.objects.filter(chapter__id=OuterRef('id'))
+        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created', 'content')
 
         # ...
         # Collection fro Annotate
@@ -83,24 +84,27 @@ class ExplainRevisionDetailView(View):
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
         try:
-            queryset = ExplainRevision.objects \
-                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('explain')) \
-                .select_related('creator', 'creator__user', 'explain') \
+            queryset = Explain.objects \
+                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
+                .select_related('creator', 'creator__user', 'guide') \
                 .filter(uuid=explain_uuid) \
                 .annotate(
                     **draft_fields,
                     **published_fields) \
-                .exclude(~Q(creator__id=person_pk), ~Q(status=PUBLISHED)) \
+                .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Tidak ditemukan."))
 
+        print(queryset.published_content)
         content = None
+        """
         blob = getattr(queryset.content, 'blob', None)
 
         if blob:
             content = blob.decode('utf-8')
-    
+        """
+        # print(queryset.published_content)
         self.context['title'] = queryset.label
         self.context['explain_uuid'] = explain_uuid
         self.context['explain_obj'] = queryset

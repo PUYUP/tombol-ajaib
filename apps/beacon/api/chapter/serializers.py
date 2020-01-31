@@ -74,15 +74,7 @@ class ChapterSerializer(serializers.ModelSerializer):
         return obj
 
     def get_permalink(self, obj):
-        uuid = obj.uuid
-
-        if obj.draft_uuid:
-            uuid = obj.draft_uuid
-
-        if obj.published_uuid:
-            uuid = obj.published_uuid
-
-        return reverse('chapter_revision_detail', kwargs={'chapter_uuid': uuid})
+        return reverse('chapter_detail', kwargs={'chapter_uuid': obj.uuid})
 
     def get_published(self, obj):
         return self.subquery_attribute(obj, 'published')
@@ -168,15 +160,7 @@ class ChapterCreateSerializer(serializers.ModelSerializer):
         return queryset
 
     def get_permalink(self, obj):
-        uuid = obj.uuid
-
-        if obj.draft_uuid:
-            uuid = obj.draft_uuid
-
-        if obj.published_uuid:
-            uuid = obj.published_uuid
-
-        return reverse('chapter_revision_detail', kwargs={'chapter_uuid': uuid})
+        return reverse('chapter_detail', kwargs={'chapter_uuid': obj.uuid})
 
     def get_published(self, obj):
         return self.subquery_attribute(obj, 'published')

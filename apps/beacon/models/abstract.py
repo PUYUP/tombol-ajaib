@@ -9,6 +9,8 @@ from django.contrib.contenttypes.fields import GenericRelation
 from apps.beacon.utils.constant import (
     DRAFT, STATUS_CHOICES, PUBLISHED)
 
+from .managers import GuideRevisionManager
+
 
 # 0
 class AbstractGuide(models.Model):
@@ -27,6 +29,8 @@ class AbstractGuide(models.Model):
     votes = GenericRelation('beacon.Vote')
     ratings = GenericRelation('beacon.Rating')
 
+    objects = GuideRevisionManager()
+
     class Meta:
         abstract = True
         app_label = 'beacon'
@@ -43,6 +47,12 @@ class AbstractGuide(models.Model):
             self.slug = slugify(self.label)
 
         super().save(*args, **kwargs)
+
+    def published(self):
+        return self.guide_revisions.get(status=PUBLISHED)
+
+    def draft(self):
+        return self.guide_revisions.get(status=DRAFT)
 
 
 # 1

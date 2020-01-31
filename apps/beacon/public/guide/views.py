@@ -56,11 +56,12 @@ class GuideListView(View):
         return render(request, self.template_name, self.context)
 
 
-class GuideRevisionDetailView(View):
+class GuideDetailView(View):
     template_name = 'templates/guide/detail.html'
     context = dict()
 
     def get(self, request, guide_uuid=None):
+        introduction_draft_objs = None
         person_pk = request.person_pk
         status_choices = [item for item in STATUS_CHOICES if item[0] in [DRAFT, PUBLISHED]]
 
@@ -72,7 +73,8 @@ class GuideRevisionDetailView(View):
         # GudeRevision objects in Subquery
         # ...
         revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        revision_fields = ('id', 'uuid', 'label', 'version', 'status',
+                           'date_created', 'date_updated', 'description', 'changelog')
 
         # ...
         # Collection fro Annotate
@@ -106,10 +108,32 @@ class GuideRevisionDetailView(View):
         except ObjectDoesNotExist:
             raise Http404(_("Not found."))
 
+        # ...
+        # Introductions
+        # ...
+        content_type = ContentType.objects.get_for_model(GuideRevision)
+        introduction_objs = Introduction.objects \
+            .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('content_type')) \
+            .select_related('creator', 'creator__user', 'content_type') \
+            .filter(content_type=content_type)
+
+        if queryset.creator.id == person_pk:
+            introduction_draft_objs = introduction_objs.filter(object_id=queryset.draft_id)
+
+        introduction_published_objs = introduction_objs.filter(object_id=queryset.published_id)
+
+        # Create title
+        title = queryset.draft_label
+        if queryset.published_label:
+            title = queryset.published_label
+
         self.context['person_pk'] = person_pk
         self.context['guide_uuid'] = guide_uuid
         self.context['guide_obj'] = queryset
-        self.context['title'] = queryset.label
+        self.context['title'] = title
+        self.context['introduction_draft_objs'] = introduction_draft_objs
+        self.context['introduction_published_objs'] = introduction_published_objs
+        self.context['content_type'] = content_type
         self.context['status_choices'] = status_choices
         self.context['DRAFT'] = DRAFT
         self.context['PUBLISHED'] = PUBLISHED
@@ -117,7 +141,7 @@ class GuideRevisionDetailView(View):
 
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
-class GuideRevisionEditorView(View):
+class GuideEditorView(View):
     template_name = 'templates/guide/editor-revision.html'
     context = dict()
 

@@ -5,7 +5,7 @@
 
             <div class="content">
                 <div class="header">
-                    <a href="{% url 'chapter_revision_detail' item.chapter_uuid %}">
+                    <a href="{% url '' item.chapter_uuid %}">
                         {{ item.chapter_label }}
                     </a>
                 </div>
@@ -18,7 +18,7 @@
 
                                 <div class="content">
                                     <div class="header">
-                                        <a href="{% url 'explain_revision_detail' explain.explain_uuid %}" class="item">
+                                        <a href="{% url 'explain_detail' explain.uuid %}" class="item">
                                             {{ explain.explain_label }}
                                         </a>
                                     </div>

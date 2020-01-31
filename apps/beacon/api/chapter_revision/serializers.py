@@ -88,10 +88,10 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
     def get_permalink(self, obj):
         print(obj)
         reverse_params = {
-            'revision_uuid': obj.uuid
+            'chapter_uuid': obj.uuid
         }
 
-        return reverse('chapter_revision_detail', kwargs=reverse_params)
+        return reverse('chapter_detail', kwargs=reverse_params)
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):
