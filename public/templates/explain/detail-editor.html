@@ -50,7 +50,7 @@
 <div class="tab-content pt-4" id="myTabContent">
     <div class="tab-pane fade show active" id="draft" role="tabpanel" aria-labelledby="draft-tab">
         {% if explain_obj.draft_status %}
-            <form class="form form-explain">
+            <form method="post" class="form form-explain">
                 <div class="form-group">
                     <label for="label">Label</label>
                     <input type="text" class="form-control" id="label" name="label" value="{{ explain_obj.draft_label | safe }}">
@@ -126,7 +126,7 @@
             </div>
 
             <div class="modal-body">
-                <form class="form-explain-dialog w-100">
+                <form method="post" class="form-explain-dialog w-100">
                     <div class="form-group">
                         <label for="label">Label</label>
                         <input type="text" id="label" class="form-control" name="label" required>
@@ -175,7 +175,7 @@
             </div>
 
             <div class="modal-body">
-                <form class="form-explain-dialog w-100">
+                <form method="post" class="form-explain-dialog w-100">
                     <div class="form-group">
                         <label for="label">Label</label>
                         <input type="text" id="label" class="form-control" name="label" required>

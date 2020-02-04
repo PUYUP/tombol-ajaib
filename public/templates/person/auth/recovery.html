@@ -19,7 +19,7 @@
                             </a>
                         </h6>
 
-                        <form class="recovery-request border-top pt-2 mt-3">
+                        <form method="post" class="recovery-request border-top pt-2 mt-3">
                             <div class="form-group">
                                 <label for="email">Alamat Email</label>
                                 <input id="email" class="form-control" name="email" type="email" required>
@@ -119,7 +119,7 @@
         // ...
         function confirmPrompt(data) {
             var formSetPassword = '<p>Kode otentikasi berhasil dikirim. Periksa email Anda.</p>' +
-            '<form class="recovery-confirm text-left">' +
+            '<form method="post" class="recovery-confirm text-left">' +
                 '<div class="form-group">' +
                     '<label for="secure_code">Kode Otentikasi</label>' +
                     '<input type="text" id="secure_code" class="form-control" name="secure_code" required>' +
