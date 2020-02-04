@@ -7,7 +7,7 @@
 
 {% block content %}
     <div class="container ui main-content">
-        <div class="row justify-content-center">
+        <div class="row justify-content-center pt-4">
             <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
                  <div class="card w-100 mt-4">
                     <div class="card-body">
@@ -43,7 +43,7 @@
         var attributeItems = [];
         const attributeElement = $('#attributes');
         const params = {
-            'identifiers': 'job,address,about',
+            'identifiers': 'job,address,about,gender,arround',
             'xhrFields': {
                 withCredentials: true
             }
@@ -51,7 +51,7 @@
 
         // TEXT ELEMENT
         function textElement(data) {
-            var value = (data.value.object ? data.value.object : ''),
+            var value = (data.value ? data.value.print : ''),
                 field_type = data.field_type,
                 is_required = data.is_required,
                 identifier = data.identifier,
@@ -61,14 +61,67 @@
             if (field_type === 'text') {
                 return `<div class="form-group">
                     <label for="${identifier}">${label}</label>
-                    <input type="text" id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''} value="${value}" placeholder="${placeholder}">
+                    <input type="text" id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''} value="${value ? value : ''}" placeholder="${placeholder}">
                 </div>`;
             }
 
             if (field_type === 'richtext') {
                 return `<div class="form-group">
                     <label for="${identifier}">${label}</label>
-                    <textarea id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''} placeholder="${placeholder}">${value}</textarea>
+                    <textarea id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''} placeholder="${placeholder}">${value ? value : ''}</textarea>
+                </div>`;
+            }
+
+            if (field_type === 'multi_option') {
+                console.log('A');
+            }
+
+            if (field_type === 'option') {
+                console.log('B');
+            }
+        }
+
+        // OPTION ELEMENT
+        function optionElement(data) {
+            var option_group = data.option_group,
+                field_type = data.field_type,
+                is_required = data.is_required,
+                identifier = data.identifier,
+                label = data.label,
+                placeholder = (data.placeholder ? data.placeholder : '');
+
+            if (field_type === 'multi_option') {
+                var select_checkboxs = '';
+
+                $.each(option_group, function(index, value) {
+                    select_checkboxs += `<div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="${identifier}[]" id="${identifier}_${value.id}"
+                            value="${value.id}" ${is_required ? 'required' : ''} ${value.selected ? 'checked' : ''}>
+                        
+                        <label class="form-check-label" for="${identifier}_${value.id}">
+                            ${value.option}
+                        </label>
+                    </div>`;
+                });
+
+                return `<div class="form-group">
+                    <label for="${identifier}">${label}</label>
+                    ${select_checkboxs}
+                </div>`;
+            }
+
+            if (field_type === 'option') {
+                var select_options = '<option value="">-- Pilih salah satu --</option>';
+
+                $.each(option_group, function(index, value) {
+                    select_options += `<option value="${value.id}" ${value.selected ? 'selected' : ''}>${value.option}</option>`;
+                });
+
+                return `<div class="form-group">
+                    <label for="${identifier}">${label}</label>
+                    <select id="${identifier}" class="form-control" name="${identifier}" ${is_required ? 'required' : ''}>
+                        ${select_options}
+                    </select>
                 </div>`;
             }
         }
@@ -87,6 +140,9 @@
 
                 // TEXT FIELD
                 if (value.field_type === 'text' || value.field_type === 'richtext') htmlItem = textElement(value);
+
+                // OPTION FIELD
+                if (value.field_type === 'option' || value.field_type === 'multi_option') htmlItem = optionElement(value);
 
                 // Collecting...
                 if (htmlItem) attributeItems.push(htmlItem);
@@ -115,7 +171,7 @@
             });
 
             submitHandler($(this), saveValuesObj);
-
+    
             $(this).find('button').prop('disabled', true);
             $(this).find('button').find('.spinner').removeClass('d-none');
         });
@@ -157,26 +213,14 @@
                 },
                 error: function(error) {
                     if (error && error.responseJSON) {
-                        var errorMessage = 'Terjadi kesalahan. Coba lagi.',
-                            usernameError = error.responseJSON.username,
-                            passwordError = error.responseJSON.password,
-                            notFoundError = error.responseJSON.detail;
-
-                        // Username
-                        if (usernameError) errorMessage = usernameError;
-
-                        // Password
-                        if (passwordError) errorMessage = passwordError.join('');
-
-                        // Account not found
-                        if (notFoundError) errorMessage = notFoundError;
+                        var errorMessage = error.responseJSON;
 
                         // Show error
                         if (errorMessage) {
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Oops...',
-                                text: errorMessage
+                                text: errorMessage.join('')
                             });
                         }
                     }

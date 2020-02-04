@@ -18,7 +18,8 @@ Guide = get_model('beacon', 'Guide')
 
 class GuideSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
-    permalink_update = serializers.SerializerMethodField(read_only=True)
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
+    permalink = serializers.SerializerMethodField(read_only=True)
     url = serializers.HyperlinkedIdentityField(
         view_name='beacons:guide-detail', lookup_field='uuid', read_only=True)
 
@@ -30,9 +31,8 @@ class GuideSerializer(serializers.ModelSerializer):
             'creator': {'write_only': True}
         }
 
-    def get_permalink_update(self, obj):
-        revision = obj.guide_revisions.all().first()
-        return reverse('dashboard_guide_detail', kwargs={'guide_uuid': revision.uuid})
+    def get_permalink(self, obj):
+        return reverse('guide_detail', kwargs={'guide_uuid': obj.uuid})
 
     @transaction.atomic
     def create(self, validated_data):
@@ -50,6 +50,7 @@ class GuideSerializer(serializers.ModelSerializer):
 
 
 class GuideListSerializer(serializers.ModelSerializer):
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)
     url = serializers.HyperlinkedIdentityField(

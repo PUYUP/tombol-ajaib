@@ -23,8 +23,8 @@ GuideRevision = get_model('beacon', 'GuideRevision')
 
 class GuideRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
-    # permalink = serializers.SerializerMethodField(read_only=True)
-    # permalink_update = serializers.SerializerMethodField(read_only=True)
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
+    permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = GuideRevision
@@ -57,7 +57,7 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
             # get last DRAFT or PUBLISHED
             revision_obj = GuideRevision.objects \
                 .filter(
-                    Q(creator__id=person_pk), Q(guide__uuid=guide_uuid),
+                    Q(creator_id=person_pk), Q(guide__uuid=guide_uuid),
                     Q(status=DRAFT) | Q(status=PUBLISHED)).first()
 
             # Prepare new DRAFT data
@@ -76,21 +76,7 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
 
     def get_permalink(self, obj):
-        try:
-            request = self.context['request']
-        except KeyError:
-            raise NotAcceptable()
-
-        # uuid from previous version
-        revision_uuid = request.data.get('uuid', None)
-
-        # redirect to editor if update from previous revision
-        if revision_uuid:
-            return reverse('guide_ditor', kwargs={'guide_uuid': obj.uuid})
-        return reverse('guide_detail', kwargs={'guide_uuid': obj.uuid})
-
-    def get_permalink_update(self, obj):
-        return reverse('dashboard_guide_detail', kwargs={'guide_uuid': obj.uuid})
+        return reverse('chapter_detail', kwargs={'chapter_uuid': obj.uuid})
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):

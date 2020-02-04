@@ -1,0 +1,29 @@
+<div class="chapter-listx">
+    {% for ch, ex in trees.items %}
+        <div class="chapter-group">
+            <h3 class="header position-relative mb-0">
+                {% if ch.chapter_published_label %}
+                    {{ ch.chapter_published_label | safe }}
+                {% elif ch.chapter_draft_label %}
+                    {{ ch.chapter_draft_label | safe }}
+                {% else %}
+                    {{ ch.label | safe }}
+                {% endif %}
+            </h3>
+
+            <ul class="list-unstyled pl-2 pt-3 explain-list mb-0">
+                {% for item in ex %}
+                    <li class="position-relative">
+                        {% if item.explain_published_label %}
+                            {{ item.explain_published_label | safe }}
+                        {% elif item.explain_draft_label %}
+                            {{ item.explain_draft_label | safe }}
+                        {% else %}
+                            {{ item.label | safe }}
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+</div>

@@ -17,3 +17,11 @@ STATUS_CHOICES = (
     (DRAFT, _("Konsep")),
     (ARCHIVE, _("Arsip")),
 )
+
+# TYPE
+PRIVATE = 'private'
+PUBLIC = 'public'
+TYPE_CHOICES = (
+    (PRIVATE, _("Privat")),
+    (PUBLIC, _("Publik")),
+)

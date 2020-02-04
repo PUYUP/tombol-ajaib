@@ -96,90 +96,6 @@ class AbstractValidation(models.Model):
     def __str__(self):
         return self.label
 
-    @property
-    def is_file(self):
-        if hasattr(self, 'FILE') or hasattr(self, 'IMAGE'):
-            return self.field_type in [self.FILE, self.IMAGE]
-        pass
-
-    def _save_file(self, value_obj, value):
-        # File fields in Django are treated differently, see
-        # django.db.models.fields.FileField and method save_form_data
-        if value is None:
-            # No change
-            return
-        elif value is False:
-            # Delete file
-            value_obj.delete()
-        else:
-            # New uploaded file
-            value_obj.value = value
-            value_obj.save()
-
-    def _save_value(self, value_obj, value):
-        if value is None or value == '':
-            value_obj.delete()
-            return
-        if value != value_obj.value:
-            value_obj.value = value
-            value_obj.save()
-
-    def save_value(self, entity, value):   # noqa: C901 too complex
-        ValidationValue = get_model('person', 'ValidationValue')
-        try:
-            value_obj = ValidationValue.get(
-                validation=self, content_object=entity)
-        except ValidationValue.DoesNotExist:
-            # FileField uses False for announcing deletion of the file
-            # not creating a new value
-            delete_file = self.is_file and value is False
-            if value is None or value == '' or delete_file:
-                return
-            value_obj = ValidationValue.objects.create(
-                content_object=entity, validation=self)
-
-        if self.is_file:
-            self._save_file(value_obj, value)
-        else:
-            self._save_value(value_obj, value)
-
-    def validate_value(self, value):
-        validator = getattr(self, '_validate_%s' % self.field_type)
-        validator(value)
-
-    # Validators
-
-    def _validate_text(self, value):
-        if not isinstance(value, str):
-            raise ValidationError(_("Must be str"))
-    _validate_richtext = _validate_text
-
-    def _validate_integer(self, value):
-        try:
-            int(value)
-        except ValueError:
-            raise ValidationError(_("Must be an integer"))
-
-    def _validate_file(self, value):
-        if value and not isinstance(value, File):
-            raise ValidationError(_("Must be a file."))
-
-    def _validate_image(self, value):
-        if value and not isinstance(value, File):
-            raise ValidationError(_("Must be a image."))
-
-    def _validate_email(self, value):
-        if value:
-            validate_email(value)
-
-    def _validate_url(self, value):
-        if value:
-            try:
-                validate = URLValidator(schemes=('http', 'https'))
-                validate(value)
-            except ValidationError:
-                raise ValidationError(_("Enter a valid URL."))
-
 
 class AbstractValidationValue(models.Model):
     """Mapping value with entity"""
@@ -216,19 +132,6 @@ class AbstractValidationValue(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    def _get_value(self):
-        value = getattr(self, 'value_%s' % self.validation.field_type)
-        if hasattr(value, 'all'):
-            value = value.all()
-        return value
-
-    def _set_value(self, new_value):
-        attr_label = 'value_%s' % self.validation.field_type
-        setattr(self, attr_label, new_value)
-        return
-
-    value = property(_get_value, _set_value)
-
     class Meta:
         abstract = True
         app_label = 'person'
@@ -238,6 +141,14 @@ class AbstractValidationValue(models.Model):
 
     def __str__(self):
         return self.summary()
+
+    def _get_value(self):
+        value = getattr(self, 'value_%s' % self.validation.field_type)
+        if hasattr(value, 'all'):
+            value = value.all()
+        return value
+
+    value = property(_get_value)
 
     def summary(self):
         """
@@ -255,24 +166,6 @@ class AbstractValidationValue(models.Model):
         """
         property_label = '_%s_as_text' % self.validation.field_type
         return getattr(self, property_label, self.value)
-
-    @property
-    def _richtext_as_text(self):
-        return strip_tags(self.value)
-
-    @property
-    def value_as_html(self):
-        """
-        Returns a HTML representation of the validation's value. To customise
-        e.g. image validation values, declare a _image_as_html property and
-        return e.g. an <img> tag.  Defaults to the _as_text representation.
-        """
-        property_label = '_%s_as_html' % self.validation.field_type
-        return getattr(self, property_label, self.value_as_text)
-
-    @property
-    def _richtext_as_html(self):
-        return mark_safe(self.value)
 
 
 class AbstractSecureCode(models.Model):

@@ -1,0 +1,278 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container ui main-content">
+        <div class="alert alert-info">
+            <p class="font-weight-bold mb-0">
+                {% if guide_obj.published_label %}
+                    {{ guide_obj.published_label | safe }}
+                {% else %}
+                    {{ guide_obj.draft_label | safe }}
+                {% endif %}
+
+                <a href="{% url 'guide_detail' guide_obj.uuid %}" class="font-weight-normal">[Kembali]</a>
+            </p>
+
+            Drag (klik, tahan dan seret) pada konten yang ingin dipindahkan. Anda boleh memindahkan Materi kedalam Bab lain.
+        </div>
+
+        <div class="chapter-list row"></div>
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block css %}
+    <style type="text/css">
+        .chapter-list h3 {
+            font-size: 16px;
+            font-weight: 700;
+            cursor: move;
+        }
+
+        .chapter-list .explain-list > li {
+            list-style: circle;
+            font-size: 14px;
+            line-height: 1.3;
+            padding-bottom: 7px;
+            cursor: move;
+        }
+
+        .chapter-list .explain-list > li + li {
+            border-top: 1px solid #e9e9e9;
+            padding-top: 7px;
+        }
+
+        .chapter-list .explain-list > li:last-child {
+            padding-bottom: 0;
+        }
+
+        .chapter-list > div {
+            width: 25%;
+            float: left;
+        }
+
+        .movable-placeholder {
+            margin: 0 15px 15px 15px;
+        }
+    </style>
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/jquery-ui/jquery-ui.min.js' %}"></script>
+
+    <script type="text/javascript">
+        function initSorting() {
+            // Sort the parents
+            var $placeholderElement = $('<div class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4"><div class="h-100 bg-warning"></div></div>');
+            
+            $('.chapter-list').sortable({
+                containment: 'parent',
+                items: '> div',
+                handle: '.mover',
+                tolerance: 'pointer',
+                cursor: 'move',
+                opacity: 0.7,
+                revert: 0,
+                delay: 150,
+                dropOnEmpty: true,
+                placeholder: 'movable-placeholder bg-success',
+                start: function(e, ui) {
+                    //ui.placeholder.height(ui.helper.outerHeight());
+                    ui.placeholder.width(ui.helper.outerWidth() - 30);
+                },
+
+                // Add it before the element you're dragging.
+                // This assumes that you can only ever drag one element at a time.
+                activate: function(event, ui) {
+                    $placeholderElement.insertBefore(ui.item[0]);
+
+                    // Explicitly set the height and width to preserve
+                    // flex calculations
+                    // $placeholderElement.height(ui.helper.outerHeight());
+                    $placeholderElement.width(ui.helper.outerWidth());
+                },
+
+                // Remove it when you're done dragging.
+                deactivate: function() {
+                    $placeholderElement.remove();
+                }
+            });
+
+            // Sort the children
+            $('.explain-list').sortable({
+                containment: 'document',
+                items: '> li',
+                connectWith: '.explain-list',
+                placeholder: 'movable-placeholder bg-success',
+            });
+        }
+
+        // ...
+        // Fetch and combine Chapters and Explains
+        // ...
+        var chapterObjs = $.ajax('/api/beacon/chapters/?guide_uuid={{ guide_uuid }}');
+        var explainObjs = $.ajax('/api/beacon/explains/?guide_uuid={{ guide_uuid }}');
+
+        $.when(chapterObjs, explainObjs).then(function(chapterRes, explainRes) {
+            var combineChapterExplain = [],
+                chapterItem = '',
+                chapters = chapterRes[0],
+                explains = explainRes[0];
+
+            $.each(chapters, function(index, value) {
+                var explainFiltered = explains.filter(function(x) {
+                    return x.chapter_uuid === value.uuid;
+                });
+
+                value.explains = explainFiltered;
+                combineChapterExplain.push(value);
+            });
+
+            $.each(combineChapterExplain, function(index, value) {
+                var explainsList = '',
+                    explainItem = '',
+                    explains = value.explains,
+                    has_explain = explains.length > 0;
+                
+                if (has_explain) {
+                    $.each(explains, function(ei, ev) {
+                        explainItem += `<li id="item_${ev.id}" class="position-relative" data-uuid="${ev.uuid}">
+                            ${ev.published ? ev.published.label : ev.draft.label}
+                        </li>`;
+                    });
+                }
+
+                explainsList = `<ul class="list-unstyled pl-2 pt-3 explain-list mb-0 h-100">${explainItem}</ul>`;
+
+                chapterItem += `<div id="item_${value.id}" class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4" data-uuid="${value.uuid}">
+                    <div class="chapter-group card h-100">
+                        <div class="card-body">
+                            <h3 class="header position-relative mb-0 mover d-flex w-100">
+                                <div class="pr-2">
+                                    <span class="badge badge-info stage">${value.stage}</span>
+                                </div>
+
+                                <div class="mr-auto flex-grow-1">
+                                    ${value.published ? value.published.label : value.draft.label}
+                                </div>
+                            </h3>
+
+                            ${explainsList}
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            if (chapterItem) $('.chapter-list').append(chapterItem); initSorting();
+        },
+        function(xhr, status) {
+            fetchChapter();
+        });
+
+        function fetchChapter() {
+            $.ajax({
+                method: 'GET',
+                url: '/api/beacon/chapters/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    guide_uuid: '{{ guide_uuid }}'
+                },
+                success: function(response) {
+                    var chapterItem = '';
+
+                    $.each(response, function(index, value) {
+                        chapterItem += `<div id="item_${value.id}" class="col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-4" data-uuid="${value.uuid}">
+                            <div class="chapter-group card h-100">
+                                <div class="card-body">
+                                    <h3 class="header position-relative mb-0 mover d-flex w-100">
+                                        <div class="pr-2">
+                                            <span class="badge badge-info stage">${value.stage}</span>
+                                        </div>
+
+                                        <div class="mr-auto flex-grow-1">
+                                            ${value.published ? value.published.label : value.draft.label}
+                                        </div>
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+
+                    if (chapterItem) $('.chapter-list').append(chapterItem); initSorting();
+                },
+                error: function(error) {
+                    $('.chapter-list').append('<div class="col-12">Bab belum ada data.</div>');
+                }
+            })
+        }
+
+        $(document).on('sortupdate', '.chapter-list', function (event, ui) {
+            var data = $(this).sortable('serialize', { key: 'sort' }),
+                dataArray = data.split('&'),
+                dataClean = [];
+
+            $.each(dataArray, function (index, value) {
+                var valueClean = value.replace('sort=', '');
+                dataClean.push(valueClean);
+            });
+
+            sortChapter(dataClean);
+        });
+
+        $(document).on('sortupdate', '.explain-list', function (event, ui) {
+            var $parentEl = $(this).closest('.col-12'),
+                chapterId = $parentEl.attr('id').replace('item_', ''),
+                data = $(this).sortable('serialize', { key: 'sort' }),
+                dataArray = data.split('&'),
+                dataClean = [];
+
+            $.each(dataArray, function (index, value) {
+                var valueClean = value.replace('sort=', '');
+                dataClean.push(valueClean);
+            });
+
+            var data = {
+                chapter_id: chapterId,
+                sorting: dataClean
+            }
+
+            sortExplain(data);
+        });
+
+        function sortChapter(data) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/beacon/chapters/sort/',
+                headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
+                xhrFields: { withCredentials: true },
+                data: {
+                    sortable: data.join(','),
+                },
+                success: function(response) {
+                    var $chapterList = $('.chapter-list > div');
+
+                    $.each($chapterList, function(index, value) {
+                        $(value).find('.stage').html(index + 1);
+                    });
+                }
+            });
+        }
+
+        function sortExplain(data) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/beacon/explains/sort/',
+                headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
+                xhrFields: { withCredentials: true },
+                data: {
+                    sortable: JSON.stringify(data)
+                }
+            });
+        }
+    </script>
+{% endblock %}

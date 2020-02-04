@@ -12,7 +12,7 @@ from rest_framework.exceptions import NotAcceptable, NotFound
 from utils.generals import get_model, check_uuid
 
 # LOCAL UTILS
-from apps.beacon.utils.constant import DRAFT, REJECTED
+from apps.beacon.utils.constant import DRAFT, REJECTED, PUBLISHED
 
 # PERSON APP UTILS
 from apps.person.utils.auths import CurrentPersonDefault
@@ -24,6 +24,7 @@ Content = get_model('beacon', 'Content')
 
 class ExplainRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
     permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -40,39 +41,29 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
 
         request = context.get('request', None)
         explain_uuid = data.get('explain_uuid', None)
-        revision_uuid = data.get('revision_uuid', None)
-        person = request.person
+        person_pk = request.person_pk
 
         # Validate uuid
-        revision_uuid = check_uuid(uid=revision_uuid)
         explain_uuid = check_uuid(uid=explain_uuid)
 
         """
-        Manipulasi;
-        Jika revision dengan status DRAFT ada maka ambil dan sunting kembali
-        Jika revision dnegan status DRAFT tidak ada maka buat revision baru
-        dengan data berasal dari revisi PUBLISHED terakhir
+        With this we create a new Revision
+        The data based on last PUBLISHED or DRAFT previous revisions
         """
-        if revision_uuid and explain_uuid:
+        if explain_uuid:
             # mutable data
             _mutable = data._mutable
             kwargs['data']._mutable = True
 
-            # get last DRAFT
-            revision_obj = ExplainRevision.objects.filter(
-                creator=person, explain__uuid=explain_uuid,
-                status=DRAFT).first()
+            # get last DRAFT or PUBLISHED
+            revision_obj = ExplainRevision.objects \
+                .filter(
+                    Q(creator_id=person_pk), Q(explain__uuid=explain_uuid),
+                    Q(status=DRAFT) | Q(status=PUBLISHED)).first()
 
-            # get current ExplainRevision
-            if not revision_obj:
-                try:
-                    revision_obj = ExplainRevision.objects.get(
-                        creator=person, uuid=revision_uuid, explain__uuid=explain_uuid)
-                except ObjectDoesNotExist:
-                    revision_obj = None
-
+            # Prepare new DRAFT data
             if revision_obj:
-                kwargs['data']['explain'] = revision_obj.explain.pk
+                kwargs['data']['explain'] = revision_obj.explain_id
                 kwargs['data']['label'] = revision_obj.label
                 kwargs['data']['changelog'] = revision_obj.changelog
                 kwargs['data']['status'] = DRAFT
@@ -85,22 +76,7 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
 
     def get_permalink(self, obj):
-        try:
-            request = self.context['request']
-        except KeyError:
-            raise NotAcceptable()
-
-        # uuid from previous version
-        revision_uuid = request.data.get('revision_uuid', None)
-
-        reverse_params = {
-            'chapter_uuid': obj.uuid
-        }
-
-        # redirect to editor if update from previous revision
-        if revision_uuid:
-            return reverse('explain_editor', kwargs=reverse_params)
-        return reverse('explain_detail', kwargs=reverse_params)
+        return reverse('explain_detail', kwargs={'explain_uuid': obj.uuid})
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):
@@ -114,39 +90,22 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
 
         # get variable
         label = request.data.get('label', None)
-        person = request.person
+        person_pk = request.person_pk
         explain_uuid = request.data.get('explain_uuid', None)
         explain_uuid = check_uuid(uid=explain_uuid)
 
         if not explain_uuid:
-            raise NotAcceptable()
+            raise NotAcceptable(detail=_("Explain UUID invalid."))
 
-        revision_obj, created = ExplainRevision.objects \
+        obj, created = ExplainRevision.objects \
             .filter(Q(explain__uuid=explain_uuid), Q(status=DRAFT)) \
             .get_or_create(**validated_data, defaults={'label': label})
 
-        if revision_obj and created:
+        if obj and created:
             # get instance from init
             instance = self.context.get('instance', None)
 
             if instance:
-                introductions = instance.introductions \
-                    .prefetch_related('creator', 'creator__user', 'content_type') \
-                    .select_related('creator', 'creator__user', 'content_type') \
-                    .all()
-
-                if introductions.exists():
-                    intro_model = introductions.model
-                    intro_collection = list()
-
-                    for item in introductions:
-                        intro_obj = intro_model(
-                            creator=person,
-                            content_object=revision_obj,
-                            description=item.description)
-                        intro_collection.append(intro_obj)
-                    intro_model.objects.bulk_create(intro_collection)
-
                 # Create content...
                 plain = '...'
                 blob = plain.encode('utf-8')
@@ -154,11 +113,11 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
                 if instance.content:
                     blob = getattr(instance.content, 'blob', plain)
 
-                content = Content.objects.create(creator=person, blob=blob)
-                revision_obj.content = content
-                revision_obj.save()
+                content = Content.objects.create(creator_id=person_pk, blob=blob)
+                obj.content = content
+                obj.save()
 
-        return revision_obj
+        return obj
 
     def update(self, instance, validated_data):
         try:
@@ -178,8 +137,8 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
 
         plain = request.data.get('content_blob', None)
         blob = plain.encode('utf-8')
-
         content = getattr(instance, 'content', None)
+
         if content:
             content.blob = blob
             content.save()

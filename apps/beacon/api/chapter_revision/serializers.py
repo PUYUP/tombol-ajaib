@@ -23,6 +23,7 @@ ChapterRevision = get_model('beacon', 'ChapterRevision')
 
 class ChapterRevisionSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
     permalink = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -37,61 +38,45 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
         data = kwargs.get('data', None)
         context = kwargs.get('context', None)
 
-        if data:
-            request = context.get('request', None)
-            chapter_uuid = data.get('chapter_uuid', None)
-            revision_uuid = data.get('revision_uuid', None)
-            person = request.person
+        request = context.get('request', None)
+        chapter_uuid = data.get('chapter_uuid', None)
+        person_pk = request.person_pk
 
-            # Validate uuid
-            revision_uuid = check_uuid(uid=revision_uuid)
-            chapter_uuid = check_uuid(uid=chapter_uuid)
+        # Validate uuid
+        chapter_uuid = check_uuid(uid=chapter_uuid)
 
-            """
-            Manipulasi;
-            Jika revision dengan status DRAFT ada maka ambil dan sunting kembali
-            Jika revision dnegan status DRAFT tidak ada maka buat revision baru
-            dengan data berasal dari revisi PUBLISHED terakhir
-            """
-            if revision_uuid and chapter_uuid:
-                # mutable data
-                _mutable = data._mutable
-                kwargs['data']._mutable = True
+        """
+        With this we create a new Revision
+        The data based on last PUBLISHED or DRAFT previous revisions
+        """
+        if chapter_uuid:
+            # mutable data
+            _mutable = data._mutable
+            kwargs['data']._mutable = True
 
-                # get last DRAFT
-                revision_obj = ChapterRevision.objects.filter(
-                    creator=person, chapter__uuid=chapter_uuid,
-                    status=DRAFT).first()
+            # get last DRAFT or PUBLISHED
+            revision_obj = ChapterRevision.objects \
+                .filter(
+                    Q(creator_id=person_pk), Q(chapter__uuid=chapter_uuid),
+                    Q(status=DRAFT) | Q(status=PUBLISHED)).first()
 
-                # get current ChapterRevision
-                if not revision_obj:
-                    try:
-                        revision_obj = ChapterRevision.objects.get(
-                            creator=person, uuid=revision_uuid, chapter__uuid=chapter_uuid)
-                    except ObjectDoesNotExist:
-                        revision_obj = None
+            # Prepare new DRAFT data
+            if revision_obj:
+                kwargs['data']['chapter'] = revision_obj.chapter_id
+                kwargs['data']['label'] = revision_obj.label
+                kwargs['data']['description'] = revision_obj.description
+                kwargs['data']['changelog'] = revision_obj.changelog
+                kwargs['data']['status'] = DRAFT
 
-                if revision_obj:
-                    kwargs['data']['chapter'] = revision_obj.chapter.pk
-                    kwargs['data']['label'] = revision_obj.label
-                    kwargs['data']['description'] = revision_obj.description
-                    kwargs['data']['changelog'] = revision_obj.changelog
-                    kwargs['data']['status'] = DRAFT
+            context['instance'] = revision_obj
+            kwargs['context'] = context
 
-                context['instance'] = revision_obj
-                kwargs['context'] = context
-
-                # set mutable flag back
-                kwargs['data']._mutable = _mutable
+            # set mutable flag back
+            kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
 
     def get_permalink(self, obj):
-        print(obj)
-        reverse_params = {
-            'chapter_uuid': obj.uuid
-        }
-
-        return reverse('chapter_detail', kwargs=reverse_params)
+        return reverse('chapter_detail', kwargs={'chapter_uuid': obj.chapter.uuid})
 
     @transaction.atomic
     def create(self, validated_data, *args, **kwargs):
@@ -105,36 +90,19 @@ class ChapterRevisionSerializer(serializers.ModelSerializer):
 
         # get variable
         label = request.data.get('label', None)
-        person = request.person
         chapter_uuid = request.data.get('chapter_uuid', None)
         chapter_uuid = check_uuid(uid=chapter_uuid)
 
-        revision_obj, created = ChapterRevision.objects \
+        if not chapter_uuid:
+            raise NotAcceptable(detail=_("Chapter UUID invalid."))
+
+        # If Revision with DRAFT status appear, get it
+        # If not create new
+        obj, created = ChapterRevision.objects \
             .filter(Q(chapter__uuid=chapter_uuid), Q(status=DRAFT)) \
             .get_or_create(**validated_data, defaults={'label': label})
 
-        if revision_obj and created:
-            # get instance from init
-            instance = self.context.get('instance', None)
-
-            if instance:
-                introductions = instance.introductions \
-                    .prefetch_related('creator', 'creator__user', 'content_type') \
-                    .select_related('creator', 'creator__user', 'content_type') \
-                    .all()
-
-                if introductions.exists():
-                    intro_model = introductions.model
-                    intro_collection = list()
-
-                    for item in introductions:
-                        intro_obj = intro_model(
-                            creator=person,
-                            content_object=revision_obj,
-                            description=item.description)
-                        intro_collection.append(intro_obj)
-                    intro_model.objects.bulk_create(intro_collection)
-        return revision_obj
+        return obj
 
     def update(self, instance, validated_data):
         # only revision with status is DRAFT allow to update

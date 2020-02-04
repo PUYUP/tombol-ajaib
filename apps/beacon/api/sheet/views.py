@@ -106,7 +106,7 @@ class SheetApiView(viewsets.ViewSet):
                 **draft_fields,
                 **published_fields) \
             .order_by('sort_stage') \
-            .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
 
         if person_uuid:
             queryset = queryset.filter(creator__uuid=person_uuid)

@@ -1,92 +1,221 @@
 {% extends 'templates/base.html' %}
 {% load static %}
-{% load sidenav %}
 
 {% block head %}
 <title>{{ title }}</title>
 {% endblock %}
 
 {% block content %}
-    <div class="container main-content d-flex">
-        <div id="docs-nav" class="docs-nav pr-4 align-self-stretch">
-            <div class="docs-nav__inner">
-                <div class="tools d-flex w-100 align-items-center">
-                    {% if guide_obj.creator.id == person_pk %}
-                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
-                            Tambah Bab
-                        </button>
-                    {% else %}
-                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter">
-                            Tampilkan Semua
-                        </button>
-                    {% endif %}
-                </div>
-
-                <div class="chapter-wrap docs-scroller">
-                    <div class="chapter-list pr-3 pb-3 pt-2">
-                        <div class="chapter-group">
-                            <h3 class="header">
-                                <a href="{% url 'guide_detail' chapter_obj.guide.uuid %}" class="text-dark">
-                                    Pengantar
-                                </a>
-                            </h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> <!-- /.docs-nav -->
+    <div class="container main-content d-lg-flex d-xl-flex">
+        {% include 'templates/general/docnav.html' %}
 
         <div class="docs-content flex-grow-1">
-            <div class="pt-2">
-                <ul class="nav nav-tabs" id="myTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab"
-                            aria-controls="home" aria-selected="true">Konsep</a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" id="profile-tab" data-toggle="tab" href="#profile" role="tab"
-                            aria-controls="profile" aria-selected="false">Terbit</a>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="myTabContent">
-                    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">...</div>
-                    <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">...</div>
-                </div>
-
-                <h1>{{ chapter_obj.label }}</h1>
-
-                {% if chapter_obj.description %}
-                    <p>{{ chapter_obj.description }}</p>
-                {% endif %}
-
-                # published: {{ chapter_obj.published_version }}
-                # draft: {{ chapter_obj.draft_version }}
-
-                
-                <ul>
-                {% for key, value in res.items %}
-                    <li>
-                        {{ key.sort_stage }} {{ key.label }} - {{ key.chapter_draft_version }} - {{ key.chapter_published_version }}
-                        
-                        <ul>
-                            {% for item in value %}
-                                <li>{{ item.label }} - {{ item.explain_draft_version }} - {{ item.explain_published_version }}</li>
-                            {% endfor %}
-                        </ul>
-                    </li>
-                {% endfor %}
-                </ul>
-            </div>
+            {% if chapter_obj.creator.id == person_pk %}
+                {% include 'templates/chapter/detail-editor.html' %}
+            {% else %}
+                 {% include 'templates/chapter/detail-public.html' %}
+            {% endif %}
         </div> <!-- /.docs-content -->
+
+        <div class="docs-tools">
+        </div> <!-- /.sidebar -->
     </div> <!-- /.main content -->
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{% static 'vendors/scripts/chapter.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/scripts/chapter-list.js' %}"></script>
 
     <script type="text/javascript">
-        loadChapter('{{ chapter_obj.guide.uuid }}', '{{ chapter_uuid }}');
+        loadChapter('{{ chapter_obj.guide.uuid }}', '{{ chapter_uuid }}', '{{ user.person.uuid }}');
     </script>
+
+    {% if chapter_obj.creator.id == person_pk %}
+        <script type="text/javascript" src="{% static 'vendors/scripts/chapter-add.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/scripts/explain-add.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+        <script type="text/javascript">
+            $(document).on('submit', '.form-chapter', function(event) {
+                event.preventDefault();
+
+                var formValuesObj = getFormValues($(this));
+                var saveValuesObj = {};
+                var status = $(this).find('button[type=submit]:focus').data('status');
+
+                $.each(formValuesObj, function(i, v) {
+                    saveValuesObj[i] = v.value;
+                });
+
+                if (status === '{{ PUBLISHED }}') {
+                    Swal.fire({
+                        title: 'Konfirmasi Penerbitan',
+                        text: 'Apakah yakin tindakan ini?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Konfirmasi',
+                        showLoaderOnConfirm: true,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    }).then((result) => {
+                        if (result.value) {
+                            saveValuesObj.status = '{{ PUBLISHED }}';
+                            submitHandler($(this), saveValuesObj, true);
+                        }
+                    });
+
+                    return false;
+                }
+
+                if (status === '{{ DRAFT}}') {
+                    submitHandler($(this), saveValuesObj, true);
+                }
+
+                $(this).find('button').prop('disabled', true);
+                $(this).find('button').find('.spinner').removeClass('d-none');
+            });
+
+            // ...
+            // UPDATE Guide
+            // ...
+            $(document).on('click', '#update-chapter', function(event) {
+                event.preventDefault();
+   
+                var data = {
+                    'chapter_uuid': $(this).data('uuid'),
+                }
+
+                submitHandler($(this), data);
+            });
+
+            // ...
+            // SUBMIT HANDLER
+            // ...
+            function submitHandler($form=null, $data, is_patch=false) {
+                var method = 'POST',
+                    url = '/api/beacon/chapters-revisions/';
+
+                // PATCH Action (Update)
+                if (is_patch === true) {
+                    method = 'PATCH';
+                    url = '/api/beacon/chapters-revisions/{{ chapter_obj.draft_uuid }}/';
+                }
+
+                $.ajax({
+                    method: method,
+                    url: url,
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$data
+                    },
+                    success: function(response) {
+                        if (is_patch === false) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Pembaruan Berhasil',
+                                text: 'Menyiapkan editor...',
+                                showCloseButton: false,
+                                showCancelButton: false,
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                            });
+
+                            window.location.reload();
+                        }
+
+                        if (is_patch === true) {
+                            if (response.status === '{{ PUBLISHED }}') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil Diterbitkan',
+                                    text: 'Sedang mengalihkan...',
+                                    showCancelButton: false,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                });
+
+                                window.location.reload();
+                            }
+
+                            if (response.status === '{{ DRAFT }}') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Sukses',
+                                    text: 'Pembaruan berhasil.',
+                                });
+                            }
+                        }
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    },
+                    complete: function(xhr, status) {
+                        $form.find('button').prop('disabled', false);
+                        $form.find('button').find('.spinner').addClass('d-none');
+                    }
+                });
+            }
+
+            // ...
+            // DELETE CHAPTER
+            // ...
+            $(document).on('click', '#delete-chapter', function(event) {
+                event.preventDefault();
+
+                var uuid = $(this).data('uuid'),
+                    redirect = $(this).data('redirect');
+ 
+                Swal.fire({
+                    title: 'Konfirmasi Penghapusan',
+                    text: 'Apakah yakin tindakan ini? Bab dan Materi terkait akan terhapus selamanya.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Konfirmasi',
+                    showLoaderOnConfirm: true,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    customClass: {
+                        input: 'input-class text-center text-keyup',
+                    },
+                    input: 'text',
+                    inputAttributes: {
+                        autocapitalize: 'off',
+                        placeholder: 'Ketik kata "HAPUS"',
+                    },
+                    inputValidator: (value) => {
+                        if (!value || value !== 'HAPUS') {
+                            return 'Ketik kata "HAPUS".'
+                        }
+                    },
+                }).then((result) => {
+                    if (result.value) {
+                        deleteHandler(uuid, 'chapters', redirect);
+                    }
+                });
+            });
+        </script>
+    {% endif %}
 {% endblock %}

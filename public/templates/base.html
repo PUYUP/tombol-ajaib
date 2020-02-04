@@ -16,6 +16,22 @@
 
     <body>
         <header>
+            {% if messages %}
+                <div class="alert alert-secondary flash-message position-fixed w-100 pl-0 pr-0 alert-dismissible fade show" role="alert">
+                    <div class="container">
+                        <ul class="list-unstyled mb-3">
+                            {% for message in messages %}
+                                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+
+                        <button type="button" class="btn btn-outline-secondary pl-3 pr-3 btn-sm" data-dismiss="alert" aria-label="Close">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
             {% block navbar %}{% endblock %}
             {% include "templates/navbar.html" %}
         </header>

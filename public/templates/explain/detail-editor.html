@@ -1,0 +1,206 @@
+<div class="border-bottom mb-4 pb-3">
+    <div class="d-block">
+        <h1 class="mb-2 mt-0">
+            <span class="badge badge-secondary font-weight-normal">Materi</span>
+
+            {% if explain_obj.published_label %}
+                {{ explain_obj.published_label | safe }}
+            {% else %}
+                {{ explain_obj.draft_label | safe }}
+            {% endif %}
+        </h1>
+
+        <span class="text-muted docs-content__meta">
+            {{ explain_obj.guide.category.label }} &nbsp;|&nbsp; 
+            Revisi {{ explain_obj.published_version }} &nbsp;|&nbsp; 
+            Pembaruan {{ explain_obj.published_date_updated }}
+        </span>
+    </div>
+
+    <div class="d-block border-top pt-3 mt-3">
+        <button type="button" id="delete-explain" class="btn btn-outline-danger btn-sm pl-4 pr-4" data-uuid="{{ explain_obj.uuid }}"
+            data-redirect="{% url 'chapter_detail' explain_obj.chapter.uuid %}">
+            Hapus
+        </button>
+    </div>
+</div>
+
+<ul class="nav nav-tabs" id="myTab" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="draft-tab" data-toggle="tab" href="#draft"
+            role="tab" aria-controls="draft" aria-selected="true">
+            Konsep 
+            {% if explain_obj.draft_version %}
+                <small class="text-muted"><em>rev. {{ explain_obj.draft_version }}</em></small>
+            {% endif %}
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link" id="published-tab" data-toggle="tab" href="#published" 
+            role="tab" aria-controls="published" aria-selected="false">
+            Terbit
+            {% if explain_obj.published_version %}
+                <small class="text-muted"><em>rev. {{ explain_obj.published_version }}</em></small>
+            {% endif %}
+        </a>
+    </li>
+</ul>
+
+<div class="tab-content pt-4" id="myTabContent">
+    <div class="tab-pane fade show active" id="draft" role="tabpanel" aria-labelledby="draft-tab">
+        {% if explain_obj.draft_status %}
+            <form class="form form-explain">
+                <div class="form-group">
+                    <label for="label">Label</label>
+                    <input type="text" class="form-control" id="label" name="label" value="{{ explain_obj.draft_label | safe }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="content_blob">Konten</label>
+                    <textarea class="form-control" id="content_blob" name="content_blob" rows="3">{{ content_draft | safe }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="changelog">Changelog</label>
+                    <textarea class="form-control" id="changelog" name="changelog" rows="3">{% if explain_obj.draft_changelog %}{{ explain_obj.draft_changelog | safe }}{% endif %}</textarea>
+                </div>
+
+                <div class="d-flex w-100 pt-2">
+                    <button type="submit" class="btn btn-warning pl-4 pr-4 mr-auto save-explain" data-status="{{ DRAFT }}">
+                        <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        
+                        Simpan Konsep
+                    </button>
+
+                    <button type="submit" class="btn btn-success pl-4 pr-4 save-explain" data-status="{{ PUBLISHED }}">
+                        Terbitkan
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-info">
+                <p>Sudah diterbitkan dan terlihat oleh publik.</p>
+
+                <button type="button" id="update-explain" class="btn btn-warning pl-4 pr-4" data-uuid="{{ explain_obj.uuid }}">
+                    Perbarui
+                </button>
+            </div>
+        {% endif %}
+    </div> <!-- /.draft -->
+
+    <div class="tab-pane fade" id="published" role="tabpanel" aria-labelledby="published-tab">
+        {% if explain_obj.published_status %}
+            <div class="form-group">
+                <label>Label</label>
+                <p class="mb-0">{{ explain_obj.published_label | safe }}</p>
+            </div>
+
+            <div class="form-group">
+                <label class="d-block">Konten</label>
+                {{ content_published | safe }}
+            </div>
+
+            <div class="form-group">
+                <label for="changelog">Changelog</label>
+                <p class="mb-0">{{ explain_obj.published_changelog | safe }}</p>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                Belum ada publikasi. Mulai dengan Konsep yang baik lalu publikasikan. Banyak orang menunggu karya terbaik dari Anda.
+            </div>
+        {% endif %}
+    </div> <!-- /.published -->
+</div> <!-- /.tab content -->
+
+<div class="modal fade" id="modalAddChapter" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tambah Bab</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form class="form-explain-dialog w-100">
+                    <div class="form-group">
+                        <label for="label">Label</label>
+                        <input type="text" id="label" class="form-control" name="label" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">
+                            Keterangan <span class="small text-muted font-weight-normal">(tidak wajib)</span>
+                        </label>
+
+                        <textarea id="description" class="form-control" name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="changelog">Changelog</label>
+                        <textarea id="changelog" class="form-control" name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
+                    </div>
+
+                    <input type="hidden" name="chapter" value="{{ explain_obj.chapter.id }}">
+
+                    <div class="mt-4 d-flex w-100 border-top pt-4">
+                        <button type="button" class="btn mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
+
+                        <button type="submit" class="btn btn-info pl-4 pr-4 ml-auto d-flex align-items-center">
+                            <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div> <!-- /.modal add explain -->
+
+<div class="modal fade" id="modalAddExplain" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tambah Materi</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form class="form-explain-dialog w-100">
+                    <div class="form-group">
+                        <label for="label">Label</label>
+                        <input type="text" id="label" class="form-control" name="label" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="changelog">Changelog</label>
+                        <textarea id="changelog" class="form-control" name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
+                    </div>
+
+                    <input type="hidden" name="chapter">
+
+                    <div class="mt-4 d-flex w-100 border-top pt-4">
+                        <button type="button" class="btn mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
+
+                        <button type="submit" class="btn btn-info pl-4 pr-4 ml-auto d-flex align-items-center">
+                            <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div> <!-- /.modal add explain -->

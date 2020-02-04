@@ -1,0 +1,24 @@
+<div class="border-bottom mb-3 pb-3">
+    <h1 class="mb-2 mt-0">
+        {% if explain_obj.published_label %}
+            {{ explain_obj.published_label | safe }}
+        {% else %}
+            {{ explain_obj.draft_label | safe }}
+        {% endif %}
+    </h1>
+
+    <span class="text-muted docs-content__meta">
+        {{ explain_obj.guide.category.label }} &nbsp;|&nbsp; 
+        Revisi {{ explain_obj.published_version }} &nbsp;|&nbsp; 
+        Pembaruan {{ explain_obj.published_date_updated }}
+    </span>
+</div>
+
+<div class="form-group">
+    {{ content_published | safe }}
+</div>
+
+<div class="form-group">
+    <label for="changelog">Changelog</label>
+    <p class="mb-0">{{ explain_obj.published_changelog | safe }}</p>
+</div>

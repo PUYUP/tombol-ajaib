@@ -1,11 +1,14 @@
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import Count, OuterRef, Subquery, Case, When, Q, Prefetch, Exists
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.cache import never_cache
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, ValidationError as _ValidationError
+from django.core.files import File
+from django.utils.html import strip_tags
 
 # DRF
 from rest_framework.permissions import IsAuthenticated
@@ -22,6 +25,9 @@ from ..permissions import IsAllowCrudObject
 
 # GET MODELS FROM GLOBAL UTILS
 from utils.generals import get_model
+
+# PERSON APP UTILS
+from apps.person.utils.constant import FIELD_TYPE_CHOICES, OPTION, MULTI_OPTION
 
 Attribute = get_model('person', 'Attribute')
 AttributeValue = get_model('person', 'AttributeValue')
@@ -54,20 +60,16 @@ class AttributeApiView(viewsets.ViewSet):
     def list(self, request, format=None):
         context = {'request': self.request}
         identifiers = request.GET.get('identifiers', None)
+        person_pk = request.person_pk
 
         # Attributes
-        if hasattr(request.user, 'person') and identifiers:
-            person = request.person
+        if person_pk and identifiers:
             identifiers = identifiers.split(',')
-
-            # ContentType berdasarkan content (model)
-            content_type = ContentType.objects.get_for_model(person)
-            queryset = Attribute.objects.get_attributes(identifiers, person, content_type)
+            queryset = Attribute.objects.attribute_values(
+                identifiers=identifiers, request=request)
 
             # JSON Api
-            serializer = AttributeSerializer(
-                queryset, many=True, context=context)
-
+            serializer = AttributeSerializer(queryset, many=True, context=context)
             return Response(serializer.data, status=response_status.HTTP_200_OK)
         raise NotAcceptable(detail=_("Data tidak valid."))
 
@@ -77,7 +79,7 @@ class AttributeApiView(viewsets.ViewSet):
     def partial_update(self, request, uuid=None):
         """
         {
-            "value": "Kafir!"
+            "value": "Halo!"
         }
         """
         context = {'request': self.request}
@@ -127,29 +129,11 @@ class AttributeApiView(viewsets.ViewSet):
             permission_classes=[IsAuthenticated],
             url_path='update', url_name='update_attributes')
     def update_attributes(self, request):
-        person = request.person
-        content_type = ContentType.objects.get_for_model(person)
-        param_keys = [key for key in request.data if key]
         context = {'request': self.request}
+        identifiers = [key for key in request.data if key]
 
-        if not person:
-            raise NotAcceptable()
+        queryset = Attribute.objects.update_values(
+            identifiers=identifiers, request=request)
 
-        # Append file
-        if request.FILES:
-            setattr(request.data, 'files', request.FILES)
-
-        # Update attribute
-        try:
-            Attribute.objects.update_value(
-                request.data, person, content_type)
-        except DjangoValidationError as e:
-            errors = list(e.messages)
-            raise ValidationError(errors)
-
-        queryset = Attribute.objects.get_attributes(
-            param_keys, person, content_type)
-
-        serializer = AttributeSerializer(
-            queryset, many=True, context=context)
+        serializer = AttributeSerializer(queryset, many=True, context=context)
         return Response(serializer.data, status=response_status.HTTP_200_OK)

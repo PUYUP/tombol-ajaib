@@ -7,7 +7,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.contrib.contenttypes.models import ContentType
 
 # PROJECT UTILS
@@ -21,6 +21,7 @@ Category = get_model('beacon', 'Category')
 Guide = get_model('beacon', 'Guide')
 GuideRevision = get_model('beacon', 'GuideRevision')
 Introduction = get_model('beacon', 'Introduction')
+Chapter = get_model('beacon', 'Chapter')
 ChapterRevision = get_model('beacon', 'ChapterRevision')
 Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
@@ -94,8 +95,8 @@ class GuideDetailView(View):
         # ...
         try:
             queryset = Guide.objects \
-                .prefetch_related(Prefetch('creator'), Prefetch('creator__user')) \
-                .select_related('creator', 'creator__user') \
+                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('category')) \
+                .select_related('creator', 'creator__user', 'category') \
                 .filter(Q(uuid=guide_uuid) | Q(guide_revisions__uuid=guide_uuid)) \
                 .annotate(
                     num_revision=Count('guide_revisions', distinct=True),
@@ -103,7 +104,7 @@ class GuideDetailView(View):
                     num_chapter=Count('chapters', distinct=True),
                     **draft_fields,
                     **published_fields) \
-                .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED)) \
+                .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Not found."))
@@ -119,7 +120,6 @@ class GuideDetailView(View):
 
         if queryset.creator.id == person_pk:
             introduction_draft_objs = introduction_objs.filter(object_id=queryset.draft_id)
-
         introduction_published_objs = introduction_objs.filter(object_id=queryset.published_id)
 
         # Create title
@@ -141,25 +141,80 @@ class GuideDetailView(View):
 
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
-class GuideEditorView(View):
-    template_name = 'templates/guide/editor-revision.html'
+class GuideSortingView(View):
+    template_name = 'templates/guide/sorting.html'
     context = dict()
 
-    def get(self, request, revision_uuid=None):
+    def get(self, request, guide_uuid=None):
         status_choices = [item for item in STATUS_CHOICES if item[0] in [DRAFT, PUBLISHED]]
-        person = request.person
+        person_pk = request.person_pk
 
-        uuid = check_uuid(uid=revision_uuid)
-        if not uuid:
-            raise Http404(_("Tidak ditemukan."))
+        guide_uuid = check_uuid(uid=guide_uuid)
+        if not guide_uuid:
+            raise Http404(_("Guide UUID invalid."))
 
+        # ...
+        # GudeRevision objects in Subquery
+        # ...
+        revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
+        revision_fields = ('id', 'uuid', 'label', 'version', 'status',
+                           'date_created', 'date_updated', 'description', 'changelog')
+
+        # ...
+        # Collection fro Annotate
+        # ...
+        draft_fields = dict()
+        published_fields = dict()
+
+        for item in revision_fields:
+            draft_fields['draft_%s' % item] = Subquery(
+                revision_objs.filter(status=DRAFT).order_by('-version').values(item)[:1])
+
+            published_fields['published_%s' % item] = Subquery(
+                revision_objs.filter(status=PUBLISHED).values(item)[:1])
+
+        # ...
+        # Run query
+        # ...
         try:
-            revision_obj = GuideRevision.objects.get(
-                uuid=uuid, creator=person)
+            queryset = Guide.objects \
+                .prefetch_related(Prefetch('creator'), Prefetch('creator__user')) \
+                .select_related('creator', 'creator__user') \
+                .filter(Q(uuid=guide_uuid) | Q(guide_revisions__uuid=guide_uuid)) \
+                .annotate(
+                    num_revision=Count('guide_revisions', distinct=True),
+                    num_explain=Count('explains', distinct=True),
+                    num_chapter=Count('chapters', distinct=True),
+                    **draft_fields,
+                    **published_fields) \
+                .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
+                .get()
         except ObjectDoesNotExist:
-            raise Http404(_("Tidak ditemukan."))
+            raise Http404(_("Not found."))
 
-        self.context['revision'] = revision_obj
-        self.context['title'] = revision_obj.label
+        if queryset.creator.id is not person_pk:
+            raise PermissionDenied()
+
+        # Create title
+        title = queryset.draft_label
+        if queryset.published_label:
+            title = queryset.published_label
+
+        self.context['guide_uuid'] = guide_uuid
+        self.context['guide_obj'] = queryset
+        self.context['title'] = title
         self.context['status_choices'] = status_choices
+        return render(request, self.template_name, self.context)
+
+
+@method_decorator(login_required(login_url='login'), name='dispatch')
+class GuideInitialView(View):
+    template_name = 'templates/guide/initial.html'
+    context = dict()
+
+    def get(self, request):
+        category_objs = Category.objects.all()
+
+        self.context['title'] = _("Mulai Panduan")
+        self.context['category_objs'] = category_objs
         return render(request, self.template_name, self.context)

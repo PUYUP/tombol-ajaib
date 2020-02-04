@@ -53,6 +53,7 @@ class AbstractPerson(models.Model):
         related_name='person'
     )
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    is_validated = models.BooleanField(default=False, null=True)
     roles = models.ManyToManyField(
         'person.Role', related_name='roles', blank=True)
     attribute_values = GenericRelation(

@@ -11,6 +11,7 @@ from apps.person.public import urls as person_urls
 from apps.beacon.public.guide import urls as guide_urls
 from apps.beacon.public.chapter import urls as chapter_urls
 from apps.beacon.public.explain import urls as explain_urls
+from apps.beacon.public.category import urls as category_urls
 
 urlpatterns = [
     path('', include(core_urls)),
@@ -19,6 +20,7 @@ urlpatterns = [
     path('guide/', include(guide_urls)),
     path('explain/', include(explain_urls)),
     path('chapter/', include(chapter_urls)),
+    path('category/', include(category_urls)),
     path('admin/', admin.site.urls),
 ]
 

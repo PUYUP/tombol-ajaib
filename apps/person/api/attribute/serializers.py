@@ -38,7 +38,8 @@ class AttributeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Attribute
-        fields = '__all__'
+        fields = ('uuid', 'label', 'value', 'url', 'option_group', 'field_type',
+                  'identifier',)
 
     def get_option_group(self, obj):
         # option_group
@@ -46,33 +47,32 @@ class AttributeSerializer(serializers.ModelSerializer):
         if option_group:
             request = self.context['request']
             field_type = obj.field_type
-            person = request.person
+            person_pk = request.person_pk
 
             selected_option = AttributeValue.objects.filter(
-                object_id=person.pk,
+                object_id=person_pk,
                 attribute__identifier=obj.identifier,
-                **{'value_%s__pk' % field_type: OuterRef('id')})
+                **{'value_%s__id' % field_type: OuterRef('id')})
 
             options = obj.option_group.options \
                 .annotate(
                     selected=Exists(selected_option)) \
-                .all().values('id', 'option', 'selected')
+                .all().values('id', 'uuid', 'option', 'selected')
             return options
         return None
 
     def get_value(self, obj):
         field_type = obj.field_type
         request = self.context['request']
-        person = request.person
+        person_pk = request.person_pk
         value_field = 'value_%s' % field_type
-        value = getattr(obj, value_field, None)
-        value_print = getattr(obj, 'label', None)
+        value = getattr(obj, value_field, '')
 
-        if person:
+        if person_pk and field_type != 'multi_option' and field_type != 'option':
             if field_type == 'image' or field_type == 'file':
                 try:
                     obj_file = obj.attributevalue_set.get(
-                        person=person, attribute__identifier=obj.identifier)
+                        object_id=person_pk, attribute__identifier=obj.identifier)
                 except ObjectDoesNotExist:
                     obj_file = None
 
@@ -81,37 +81,11 @@ class AttributeSerializer(serializers.ModelSerializer):
                     file = getattr(obj_file, 'value_%s' % field_type, None)
                     if file:
                         value = request.build_absolute_uri(file.url)
-                        value_print = file.name
-
-            if field_type == 'multi_option':
-                value = list()
-                value_print = list()
-                option = obj.attributevalue_set \
-                    .prefetch_related('person', 'attribute',
-                                      'value_multi_option', 'content_object') \
-                    .select_related('person', 'attribute',
-                                    'value_multi_option', 'content_object') \
-                    .filter(
-                        person=person,
-                        attribute__identifier=obj.identifier) \
-                    .defer('person', 'attribute', 'value_multi_option',
-                           'content_object') \
-                    .values(
-                        'value_multi_option__id',
-                        'value_multi_option__option')
-
-                if option:
-                    for opt in option:
-                        id = opt.get('value_multi_option__id', None)
-                        label = opt.get('value_multi_option__option', None)
-                        value.append(id)
-                        value_print.append(label)
 
             value_dict = {
                 'uuid': getattr(obj, 'value_uuid', None),
                 'field': field_type,
-                'object': value,
-                'object_print': value_print
+                'print': value,
             }
 
             return value_dict
@@ -126,13 +100,10 @@ class AttributeSerializer(serializers.ModelSerializer):
 
         identifier = instance.identifier
         value = request.data.get('value', None)
-        person = request.person
-        content_type = ContentType.objects.get_for_model(person)
+        person_pk = request.person_pk
 
-        if person:
-            data = {identifier: value}
-            Attribute.objects.update_value(data, person, content_type)
-
-            return Attribute.objects \
-                .get_attribute(identifier, person, content_type)
+        if person_pk:
+            queryset = Attribute.objects.update_value(
+                identifier, value, request=request)
+            return queryset
         return validated_data

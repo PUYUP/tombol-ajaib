@@ -38,8 +38,9 @@ class ChapterDetailView(View):
         # ...
         # ChapterRevision objects in Subquery
         # ...
-        revision_objs = ChapterRevision.objects.filter(chapter__id=OuterRef('id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        revision_objs = ChapterRevision.objects.filter(chapter_id=OuterRef('id'))
+        revision_fields = ('id', 'uuid', 'label', 'version', 'status',
+                           'date_created', 'date_updated', 'description', 'changelog')
 
         # ...
         # Collection fro Annotate
@@ -56,90 +57,26 @@ class ChapterDetailView(View):
 
         try:
             queryset = Chapter.objects \
-                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
-                .select_related('creator', 'creator__user', 'guide') \
+                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide'),
+                                  Prefetch('guide__category')) \
+                .select_related('creator', 'creator__user', 'guide', 'guide__category') \
                 .filter(uuid=chapter_uuid) \
                 .annotate(
                     **draft_fields,
                     **published_fields) \
-                .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED)) \
+                .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Tidak ditemukan."))
 
-        """
-        # ...
-        # ChapterRevision objects in Subquery
-        # ...
-        revision_objs = ChapterRevision.objects.filter(chapter__id=OuterRef('chapter__id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        # Create title
+        title = queryset.draft_label
+        if queryset.published_label:
+            title = queryset.published_label
 
-        # ...
-        # Collection fro Annotate
-        # ...
-        draft_fields = dict()
-        published_fields = dict()
-
-        for item in revision_fields:
-            draft_fields['chapter_draft_%s' % item] = Subquery(
-                revision_objs.filter(status=DRAFT).order_by('-version').values(item)[:1])
-
-            published_fields['chapter_published_%s' % item] = Subquery(
-                revision_objs.filter(status=PUBLISHED).values(item)[:1])
-
-        # ...
-        # ExplainRevision objects in Subquery
-        # ...
-        explain_revision_objs = ExplainRevision.objects.filter(explain_id=OuterRef('id'))
-        explain_revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
-
-        # ...
-        # Collection fro Annotate
-        # ...
-        explain_draft_fields = dict()
-        explain_published_fields = dict()
-
-        for item in explain_revision_fields:
-            explain_draft_fields['explain_draft_%s' % item] = Subquery(
-                explain_revision_objs.filter(status=DRAFT).order_by('-version').values(item)[:1])
-
-            explain_published_fields['explain_published_%s' % item] = Subquery(
-                explain_revision_objs.filter(status=PUBLISHED).values(item)[:1])
-
-        explain_objs = Explain.objects \
-            .prefetch_related(Prefetch('creator'), Prefetch('guide'), Prefetch('chapter')) \
-            .select_related('creator', 'guide', 'chapter') \
-            .filter(guide__id=queryset.guide.id) \
-            .annotate(
-                sort_stage=Case(
-                    When(chapter__stage__isnull=False, then=F('chapter__stage')),
-                    default=99999),
-                **draft_fields,
-                **published_fields,
-                **explain_draft_fields,
-                **explain_published_fields) \
-            .order_by('sort_stage', 'chapter__date_created') \
-            .exclude(~Q(chapter__creator__id=person_pk), ~Q(chapter_published_status=PUBLISHED))
-
-        res = {}
-        for item in explain_objs:
-            chapter = item.chapter
-
-            for rev_field in revision_fields:
-                setattr(chapter, 'chapter_draft_%s' % rev_field, getattr(item, 'chapter_draft_%s' % rev_field))
-                setattr(chapter, 'chapter_published_%s' % rev_field, getattr(item, 'chapter_published_%s' % rev_field))
-                setattr(chapter, 'sort_stage', item.sort_stage)
-
-            if item.creator.id != person_pk and item.explain_published_status == PUBLISHED:
-                res.setdefault(chapter, []).append(item)
-            elif item.creator.id == person_pk:
-                res.setdefault(chapter, []).append(item)
-
-        # ...
-        # ChapterRevision objects in Subquery
-        # ...
-        revision_objs = ChapterRevision.objects.filter(chapter__id=OuterRef('id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created')
+        # Explain List...
+        revision_fields = ('id', 'uuid', 'label', 'version', 'status')
+        revision_objs = ExplainRevision.objects.filter(explain_id=OuterRef('id'))
 
         # ...
         # Collection fro Annotate
@@ -153,30 +90,25 @@ class ChapterDetailView(View):
 
             published_fields['published_%s' % item] = Subquery(
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
-    
-        x = Chapter.objects \
-            .prefetch_related('guide') \
-            .select_related('guide') \
-            .filter(guide__id=queryset.guide.id) \
+
+        explain_objs = queryset.explains \
+            .prefetch_related(Prefetch('creator'), Prefetch('chapter')) \
+            .select_related('creator', 'chapter') \
             .annotate(
-                **draft_fields,
-                **published_fields,
                 sort_stage=Case(
                     When(stage__isnull=False, then=F('stage')),
-                    default=99999)) \
-            .order_by('sort_stage', 'date_created') \
-            .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
+                    default=99999),
+                **draft_fields,
+                **published_fields) \
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
+            .order_by('sort_stage', '-date_created')
 
-        for item in x:
-            res.setdefault(item, [])
-
-        eri = sorted(res.items(), key=lambda item: item[0].sort_stage)
-        ero = {k: v for k, v in eri}
-        """
-
-        self.context['title'] = queryset.label
+        self.context['person_pk'] = person_pk
+        self.context['title'] = title
         self.context['chapter_uuid'] = chapter_uuid
         self.context['chapter_obj'] = queryset
+        self.context['explain_objs'] = explain_objs
+        self.context['guide_obj'] = queryset.guide
         self.context['status_choices'] = status_choices
         self.context['PUBLISHED'] = PUBLISHED
         self.context['DRAFT'] = DRAFT

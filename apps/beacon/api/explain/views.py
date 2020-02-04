@@ -1,3 +1,5 @@
+import json
+
 from django.db import transaction
 from django.db.models import (
     F, When, Case, OuterRef, Subquery, Prefetch, Count, Q, Value,
@@ -5,6 +7,7 @@ from django.db.models import (
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
+from django.contrib import messages
 
 # DRF
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -110,8 +113,8 @@ class ExplainApiView(viewsets.ViewSet):
                 ),
                 **draft_fields,
                 **published_fields) \
-            .order_by('sort_stage') \
-            .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
+            .order_by('sort_stage', 'date_created') \
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
 
         if person_uuid:
             queryset = queryset.filter(creator__uuid=person_uuid)
@@ -147,6 +150,7 @@ class ExplainApiView(viewsets.ViewSet):
 
         if queryset.exists():
             queryset.delete()
+            messages.add_message(request, messages.INFO, _("Materi berhasil dihapus."))
 
         return Response(
             {'detail': _("Berhasil dihapus.")},
@@ -159,21 +163,25 @@ class ExplainApiView(viewsets.ViewSet):
             permission_classes=[IsAuthenticated],
             url_path='sort', url_name='sort_stage')
     def sort_stage(self, request):
-        person = request.person
+        person_pk = request.person_pk
         sortable = request.data.get('sortable', None)
-        sortable_list = sortable.split(',')
+        sortable_dict = json.loads(sortable)
+        chapter_id = sortable_dict.get('chapter_id', None)
+        sortable_list = sortable_dict.get('sorting', None)
 
         explain_list = list()
         explain_objs = Explain.objects.filter(
-            pk__in=sortable_list, creator=person)
+            id__in=sortable_list, creator_id=person_pk)
 
         if explain_objs.exists() and sortable_list:
             for index, item in enumerate(sortable_list, start=1):
                 if item:
                     explain_obj = explain_objs.get(pk=item)
+                    
                     setattr(explain_obj, 'stage', index)
+                    setattr(explain_obj, 'chapter_id', chapter_id)
                     explain_list.append(explain_obj)
 
-            Explain.objects.bulk_update(explain_list, ['stage'])
+            Explain.objects.bulk_update(explain_list, ['stage', 'chapter_id'])
             return Response(status=response_status.HTTP_200_OK)
         raise NotFound()

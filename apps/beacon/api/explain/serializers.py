@@ -24,6 +24,8 @@ ExplainRevision = get_model('beacon', 'ExplainRevision')
 
 
 class ExplainSerializer(serializers.ModelSerializer):
+    creator = serializers.HiddenField(default=CurrentPersonDefault())
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
     chapter_uuid = serializers.UUIDField(source='chapter.uuid', read_only=True)
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)

@@ -7,8 +7,8 @@
 
 {% block content %}
     <div class="ui container main-content">
-        <div class="row justify-content-center">
-            <div class="col-12 col-sm-8 col-md-7 col-lg-5">
+        <div class="row justify-content-center pt-4">
+            <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
                 <div class="card w-100 mt-4">
                     <div class="card-body">
                         <h5 class="card-title">Validasi Akun</h5>
@@ -38,7 +38,7 @@
 
         // INPUT ELEMENT
         function inputElement(data) {
-            var value = (data.value.object ? data.value.object : ''),
+            var value = (data.value.print ? data.value.print : ''),
                 is_required = data.is_required,
                 is_verified = data.value.is_verified,
                 identifier = data.identifier,
@@ -141,7 +141,7 @@
             var params = {
                 'action': 'request_secure_code',
                 'new_value': data.new_value,
-                'identifier': data.identifier,
+                'identifier': 'validation_' + data.identifier,
                 'csrfmiddlewaretoken': Cookies.get('csrftoken'),
             }
 
@@ -197,6 +197,11 @@
                 customClass: {
                     input: 'input-class text-center text-keyup',
                 },
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Tidak boleh kosong.'
+                    }
+                },
                 preConfirm: (secureCode) => {
                     if (secureCode) {
                         const params = {
@@ -219,6 +224,11 @@
                                 if (response.status == '406') {
                                     throw new Error('Kode otentikasi salah');
                                 }
+
+                                if (response.status == '400') {
+                                    throw new Error(data.label + ' ' + data.new_value + ' sudah digunakan.');
+                                }
+
                                 throw new Error(response.statusText)
                             }
                             return response.json()
@@ -251,7 +261,7 @@
                         is_verified = data.value.is_verified,
                         validationElement = $validationInput.closest('.validation-item');
             
-                    $validationInput.val(data.value.object);
+                    $validationInput.val(data.value.print);
 
                     if (is_verified) {
                         $(validationElement).find('button').prop('disabled', true);
@@ -292,7 +302,7 @@
                 validationItem = validationDatas[index],
                 is_verified = validationItem.value.is_verified;
 
-            if (keyword == validationItem.value.object && is_verified) {
+            if (keyword == validationItem.value.print && is_verified) {
                 $(validationElement).find('button').prop('disabled', true);
                 $(validationElement).find('button').addClass('btn-secondary');
                 $(validationElement).find('button').removeClass('btn-info');

@@ -1,0 +1,43 @@
+<div id="docs-nav" class="docs-nav pr-4 align-self-stretch">
+    <div class="docs-nav__crumb d-lg-none d-xl-none">
+        <div class="d-flex w-100 align-items-center h-100">
+            <div class="container d-flex w-100 align-items-center">
+                <div class="docs-nav__toggle">
+                    <div class="toggler position-relative">
+                        <i></i>
+                    </div>
+                </div>
+
+                <div class="flex-grow-1">
+                    {{ title }}
+                </div>
+            </div>
+        </div>
+    </div> <!-- /.crumb -->
+
+    <div class="docs-nav__inner">
+        <div class="chapter-wrap docs-scroller">
+            <div class="chapter-list pr-3 pb-3 pt-3">
+                <div class="chapter-group {% if guide_obj.uuid == guide_uuid %}active{% endif %}">
+                    <h3 class="header d-flex w-100 align-items-center">
+                        <a href="{% url 'guide_detail' guide_obj.uuid %}" class="text-dark flex-grow-1">
+                            Pengantar
+                        </a>
+                        
+                        {% if guide_obj.creator.id == person_pk %}
+                            <div>
+                                <a href="{% url 'guide_sorting' guide_obj.uuid %}" class="btn btn-outline-secondary btn-sm add-explain mr-1">
+                                    Urutkan
+                                </a>
+
+                                <button type="button" class="btn btn-info btn-sm add-explain" data-toggle="modal" data-target="#modalAddChapter">
+                                    + Bab
+                                </button>
+                            </div>
+                        {% endif %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> <!-- /.docs-nav -->

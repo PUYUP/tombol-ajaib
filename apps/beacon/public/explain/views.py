@@ -18,6 +18,7 @@ from apps.beacon.utils.constant import (
 
 Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
+Content = get_model('beacon', 'Content')
 
 
 @method_decorator(login_required(login_url='login'), name='dispatch')
@@ -67,8 +68,9 @@ class ExplainDetailView(View):
         # ...
         # ExplainRevision objects in Subquery
         # ...
-        revision_objs = ExplainRevision.objects.filter(chapter__id=OuterRef('id'))
-        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created', 'content')
+        revision_objs = ExplainRevision.objects.filter(explain_id=OuterRef('id'))
+        revision_fields = ('uuid', 'label', 'version', 'status', 'date_created',
+                           'date_updated', 'content', 'changelog')
 
         # ...
         # Collection fro Annotate
@@ -85,30 +87,58 @@ class ExplainDetailView(View):
 
         try:
             queryset = Explain.objects \
-                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide')) \
-                .select_related('creator', 'creator__user', 'guide') \
+                .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide'),
+                                  Prefetch('guide__category')) \
+                .select_related('creator', 'creator__user', 'guide', 'guide__category') \
                 .filter(uuid=explain_uuid) \
                 .annotate(
                     **draft_fields,
                     **published_fields) \
-                .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED)) \
+                .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Tidak ditemukan."))
+        
+        # Create title
+        title = queryset.draft_label
+        if queryset.published_label:
+            title = queryset.published_label
 
-        print(queryset.published_content)
-        content = None
-        """
-        blob = getattr(queryset.content, 'blob', None)
+        # Content Object DRAFT
+        content_draft = None
+        content_draft_pk = queryset.draft_content
 
-        if blob:
-            content = blob.decode('utf-8')
-        """
-        # print(queryset.published_content)
-        self.context['title'] = queryset.label
+        if content_draft_pk:
+            try:
+                content_draft_obj = Content.objects.get(id=content_draft_pk)
+                blob = getattr(content_draft_obj, 'blob', None)
+            except ObjectDoesNotExist:
+                content_draft_obj = None
+
+            if content_draft_obj and blob:
+                content_draft = blob.decode('utf-8')
+
+        # Content Object PUBLISHED
+        content_published = None
+        content_published_pk = queryset.published_content
+
+        if content_published_pk:
+            try:
+                content_published_obj = Content.objects.get(id=content_published_pk)
+                blob = getattr(content_published_obj, 'blob', None)
+            except ObjectDoesNotExist:
+                content_published_obj = None
+
+            if content_published_obj and blob:
+                content_published = blob.decode('utf-8')
+
+        self.context['person_pk'] = person_pk
+        self.context['title'] = title
         self.context['explain_uuid'] = explain_uuid
         self.context['explain_obj'] = queryset
-        self.context['content'] = content
+        self.context['guide_obj'] = queryset.guide
+        self.context['content_draft'] = content_draft
+        self.context['content_published'] = content_published
         self.context['PUBLISHED'] = PUBLISHED
         self.context['DRAFT'] = DRAFT
         self.context['status_choices'] = status_choices

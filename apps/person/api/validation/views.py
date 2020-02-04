@@ -58,20 +58,16 @@ class ValidationApiView(viewsets.ViewSet):
     def list(self, request, format=None):
         context = {'request': self.request}
         identifiers = request.GET.get('identifiers', None)
+        person_pk = request.person_pk
 
         # Validations
-        if hasattr(request.user, 'person') and identifiers:
-            person = request.person
+        if person_pk and identifiers:
             identifiers = identifiers.split(',')
-
-            # ContentType berdasarkan content (model)
-            content_type = ContentType.objects.get_for_model(person)
-            queryset = Validation.objects.get_validations(identifiers, person, content_type)
+            queryset = Validation.objects.validation_values(
+                identifiers=identifiers, request=request)
 
             # JSON Api
-            serializer = ValidationSerializer(
-                queryset, many=True, context=context)
-
+            serializer = ValidationSerializer(queryset, many=True, context=context)
             return Response(serializer.data, status=response_status.HTTP_200_OK)
         raise NotAcceptable(detail=_("Data tidak valid."))
 

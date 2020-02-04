@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import (
-    ObjectDoesNotExist, ValidationError as CoreValidationError)
+    ObjectDoesNotExist, ValidationError as _ValidationError)
 
 # THIRD PARTY
 from rest_framework import serializers
@@ -36,47 +36,33 @@ class ValidationSerializer(serializers.ModelSerializer):
         exclude = ('id', 'roles', 'content_type',)
 
     def get_value(self, obj):
-        attr_type = obj.field_type
+        field_type = obj.field_type
         request = self.context['request']
-        person = request.person
-        name = 'value_%s' % attr_type
-        value = getattr(obj, name, None)
-        value_print = getattr(obj, 'label', None)
+        person_pk = request.person_pk
+        value_field = 'value_%s' % field_type
+        value = getattr(obj, value_field, '')
 
-        if person:
-            if attr_type == 'image' and hasattr(obj, 'value_image'):
-                try:
-                    obj_file = obj.validationvalue_set.get(
-                        person=person, validation__identifier=obj.identifier)
-                except ObjectDoesNotExist:
-                    obj_file = None
+        if field_type == 'image' or field_type == 'file':
+            try:
+                obj_file = obj.validationvalue_set.get(
+                    object_id=person_pk, validation__identifier=obj.identifier)
+            except ObjectDoesNotExist:
+                obj_file = None
 
-                # Make sure not empty
-                if obj_file and obj_file.value_image:
-                    value = request.build_absolute_uri(
-                        obj_file.value_image.url)
+            # File exists
+            if obj_file:
+                file = getattr(obj_file, 'value_%s' % field_type, None)
+                if file:
+                    value = request.build_absolute_uri(file.url)
 
-            if attr_type == 'file' and hasattr(obj, 'value_file'):
-                try:
-                    obj_file = obj.validationvalue_set.get(
-                        person=person, validation__identifier=obj.identifier)
-                except ObjectDoesNotExist:
-                    obj_file = None
+        value_dict = {
+            'uuid': getattr(obj, 'value_uuid', None),
+            'is_verified': getattr(obj, 'is_verified', None),
+            'field': field_type,
+            'print': value,
+        }
 
-                # Make sure not empty
-                if obj_file and obj_file.value_file:
-                    value = request.build_absolute_uri(
-                        obj_file.value_file.url)
-
-            value_dict = {
-                'uuid': getattr(obj, 'value_uuid', None),
-                'field': name,
-                'object': value,
-                'object_print': value_print,
-                'is_verified': getattr(obj, 'is_verified', None),
-            }
-            return value_dict
-        return None
+        return value_dict
 
     @transaction.atomic
     def update(self, instance, validated_data):
@@ -138,26 +124,12 @@ class ValidationSerializer(serializers.ModelSerializer):
             mark_secure_code_used(
                 self, secure_code=secure_code, person_pk=person.pk)
 
-            # Check duplicate
-            if is_unique:
-                validation_value = ValidationValue.objects \
-                    .filter(
-                        validation__identifier=identifier,
-                        is_verified=True,
-                        **{'value_%s__iexact' % field_type: value}) \
-                    .exclude(object_id=person.pk)
-
-                if validation_value.exists():
-                    raise NotAcceptable(
-                        detail=_("%s sudah digunakan, coba yang lain." % instance.label))
-
             try:
-                Validation.objects.update_value(
-                    data, person, content_type)
-            except CoreValidationError as e:
+                queryset = Validation.objects.update_value(
+                    identifier, value, request=request)
+            except _ValidationError as e:
                 errors = list(e.messages)
-                raise ValidationError(errors)
+                raise ValidationError(detail=errors)
 
-            return Validation.objects \
-                .get_validation(identifier, person, content_type)
+            return queryset
         return validated_data

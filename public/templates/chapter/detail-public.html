@@ -1,0 +1,38 @@
+<div class="border-bottom mb-3 pb-3">
+    <h1 class="mb-2 mt-0">
+        {% if chapter_obj.published_label %}
+            {{ chapter_obj.published_label | safe }}
+        {% else %}
+            {{ chapter_obj.draft_label | safe }}
+        {% endif %}
+    </h1>
+
+    <span class="text-muted docs-content__meta">
+        {{ chapter_obj.guide.category.label }} &nbsp;|&nbsp; 
+        Revisi {{ chapter_obj.published_version }} &nbsp;|&nbsp; 
+        Pembaruan {{ chapter_obj.published_date_updated }}
+    </span>
+</div>
+
+<div class="form-group">
+    <p class="mb-0">{{ chapter_obj.published_description | safe }}</p>
+</div>
+
+<div class="form-group">
+    <label for="changelog">Changelog</label>
+    <p class="mb-0">{{ chapter_obj.published_changelog | safe }}</p>
+</div>
+
+{% if explain_objs %}
+    <div class="form-group">
+        <label>Materi</label>
+    
+        <ol class="pl-3 introduction-list">
+            {% for item in explain_objs %}
+                <li>
+                    <a href="{% url 'explain_detail' item.uuid %}">{{ item.label | safe }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

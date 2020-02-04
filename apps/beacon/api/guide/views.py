@@ -5,6 +5,7 @@ from django.db.models import (
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib import messages
 
 # DRF
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -119,7 +120,7 @@ class GuideApiView(viewsets.ViewSet):
                 num_chapter=Count('chapters', distinct=True),
                 **draft_fields,
                 **published_fields) \
-            .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
 
         if uuid:
             try:
@@ -202,6 +203,7 @@ class GuideApiView(viewsets.ViewSet):
 
         if queryset.exists():
             queryset.delete()
+            messages.add_message(request, messages.INFO, _("Panduan berhasil dihapus."))
 
         return Response(
             {'detail': _("Berhasil dihapus.")},

@@ -1,0 +1,137 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+<title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container ui main-content">
+        <div class="row justify-content-center pt-4">
+            <div class="col-12 col-sm-12 col-md-10 col-lg-7 col-xl-5">
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Mulai Panduan</h5>
+                        <p class="card-text">Pastikan <strong>penamaan</strong> dan pilihan <strong>kategori</strong> sudah benar.
+                        Apapun tindakan setelah proses ini merupakan "Revisi" seperti <i>Repository Git</i>.</p>
+                    
+
+                        <form class="form form-initial">
+                            <div class="form-group">
+                                <label for="label">Nama Panduan</label>
+                                <input id="label" name="label" type="text" class="form-control" required>
+                            </div>
+
+                           <div class="form-group">
+                                <label>Kategori</label>
+
+                                <div class="row">
+                                    {% for item in category_objs %}
+                                        <div class="col-12 col-sm-6">
+                                            <div class="form-check">
+                                                <input type="radio" id="cat_{{ item.pk }}" class="form-check-input" name="category" value="{{ item.pk }}" required>
+                                                <label for="cat_{{ item.pk }}" class="form-check-label font-weight-normal">{{ item.label }}</label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description">Keterangan</label>
+                                <textarea id="description" name="description" class="form-control" required></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-info pl-4 pr-4 mt-2">
+                                <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+
+                                Kirim Panduan
+                            </button>
+                        </form>
+                    </div> <!-- /.body -->
+                </div> <!-- /.card -->
+            </div>
+        </div>
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+    
+    <script type="text/javascript">
+        $(document).on('submit', '.form-initial', function(event) {
+            event.preventDefault();
+
+            var formValuesObj = getFormValues($(this));
+            var saveValuesObj = {};
+
+            $.each(formValuesObj, function(i, v) {
+                saveValuesObj[i] = v.value;
+            });
+
+            submitHandler($(this), saveValuesObj);
+
+            $(this).find('button').prop('disabled', true);
+            $(this).find('button').find('.spinner').removeClass('d-none');
+        });
+
+        function submitHandler($form=null, $data=null) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/beacon/guides/',
+                headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                xhrFields: {withCredentials: true},
+                data: {
+                    ...$data
+                },
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Menyiapkan editor...',
+                        showCloseButton: false,
+                        showCancelButton: false,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+
+                    window.location.href = response.permalink;
+                },
+                error: function(error) {
+                    if (error && error.responseJSON) {
+                        var errorJSON = error.responseJSON,
+                            errorMessage = [];
+
+                        $.each(errorJSON, function(index, item) {
+                            var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                            
+                            if (Array.isArray(item)) {
+                                errorMessage.push(label + item.join(' '));
+                            } else {
+                                errorMessage.push(label + item);
+                            }
+                        });
+
+                        if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                        // Show error
+                        if (errorMessage) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                            });
+                        }
+                    }
+                },
+                complete: function(xhr, status) {
+                    $form.find('button').prop('disabled', false);
+                    $form.find('button').find('.spinner').addClass('d-none');
+                }
+            });
+        }
+    </script>
+{% endblock %}

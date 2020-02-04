@@ -103,165 +103,6 @@ class AbstractAttribute(models.Model):
     def __str__(self):
         return self.label
 
-    @property
-    def is_option(self):
-        if hasattr(self, 'OPTION'):
-            return self.field_type == self.OPTION
-        pass
-
-    @property
-    def is_multi_option(self):
-        if hasattr(self, 'MULTI_OPTION'):
-            return self.field_type == self.MULTI_OPTION
-        pass
-
-    @property
-    def is_file(self):
-        if hasattr(self, 'FILE') or hasattr(self, 'IMAGE'):
-            return self.field_type in [self.FILE, self.IMAGE]
-        pass
-
-    def _save_file(self, value_obj, value):
-        # File fields in Django are treated differently, see
-        # django.db.models.fields.FileField and method save_form_data
-        if value is None:
-            # No change
-            return
-        elif value is False:
-            # Delete file
-            value_obj.delete()
-        else:
-            # New uploaded file
-            value_obj.value = value
-            value_obj.save()
-
-    def _save_multi_option(self, value_obj, value):
-        # ManyToMany fields are handled separately
-        if value is None:
-            value_obj.delete()
-            return
-        try:
-            count = value.count()
-        except (AttributeError, TypeError):
-            count = len(value)
-        if count == 0:
-            value_obj.delete()
-        else:
-            value_obj.value = value
-            value_obj.save()
-
-    def _save_value(self, value_obj, value):
-        if value is None or value == '':
-            value_obj.delete()
-            return
-        if value != value_obj.value:
-            value_obj.value = value
-            value_obj.save()
-
-    def save_value(self, entity, value):   # noqa: C901 too complex
-        AttributeValue = get_model('person', 'AttributeValue')
-        try:
-            value_obj = AttributeValue.get(
-                attribute=self, content_object=entity)
-        except AttributeValue.DoesNotExist:
-            # FileField uses False for announcing deletion of the file
-            # not creating a new value
-            delete_file = self.is_file and value is False
-            if value is None or value == '' or delete_file:
-                return
-            value_obj = AttributeValue.objects.create(
-                content_object=entity, attribute=self)
-
-        if self.is_file:
-            self._save_file(value_obj, value)
-        elif self.is_multi_option:
-            self._save_multi_option(value_obj, value)
-        else:
-            self._save_value(value_obj, value)
-
-    def validate_value(self, value):
-        validator = getattr(self, '_validate_%s' % self.field_type)
-        validator(self, value)
-
-    # Validators
-
-    def _validate_text(self, value):
-        if not isinstance(value, str):
-            raise ValidationError(_("Must be str"))
-    _validate_richtext = _validate_text
-
-    def _validate_float(self, value):
-        try:
-            float(value)
-        except ValueError:
-            raise ValidationError(_("Must be a float"))
-
-    def _validate_integer(self, value):
-        try:
-            int(value)
-        except ValueError:
-            raise ValidationError(_("Must be an integer"))
-
-    def _validate_date(self, value):
-        if not (isinstance(value, datetime) or isinstance(value, date)):
-            raise ValidationError(_("Must be a date or datetime"))
-
-    def _validate_datetime(self, value):
-        if not isinstance(value, datetime):
-            raise ValidationError(_("Must be a datetime"))
-
-    def _validate_boolean(self, value):
-        if not type(value) == bool:
-            raise ValidationError(_("Must be a boolean"))
-
-    def _validate_multi_option(self, value):
-        try:
-            values = iter(value)
-        except TypeError:
-            raise ValidationError(
-                _("Must be a list or AttributeOption queryset"))
-        # Validate each value as if it were an option
-        # Pass in valid_values so that the DB
-        # isn't hit multiple times per iteration
-        valid_values = self.option_group.options.values_list(
-            'option', flat=True)
-        for value in values:
-            self._validate_option(value, valid_values=valid_values)
-
-    def _validate_option(self, value, valid_values=None):
-        if not isinstance(value, get_model('person', 'AttributeOption')):
-            raise ValidationError(
-                _("Must be an AttributeOption model object instance"))
-        if not value.pk:
-            raise ValidationError(_("AttributeOption has not been saved yet"))
-        if valid_values is None:
-            valid_values = self.option_group.options.values_list(
-                'option', flat=True)
-        if value.option not in valid_values:
-            raise ValidationError(
-                _("%(enum)s is not a valid choice for %(attr)s") %
-                {'enum': value, 'attr': self})
-
-    def _validate_file(self, value):
-        if value and not isinstance(value, File):
-            raise ValidationError(_("Must be a file."))
-
-    def _validate_image(self, value):
-        if value and not isinstance(value, File):
-            raise ValidationError(_("Must be a image."))
-
-    def _validate_email(self, value):
-        if value:
-            validate_email(value)
-
-    def _validate_url(self, value):
-        if value:
-            try:
-                validate = URLValidator(schemes=('http', 'https'))
-                validate(value)
-            except ValidationError:
-                raise ValidationError(_("Enter a valid URL."))
-
 
 class AbstractAttributeValue(models.Model):
     """Mapping value with entity"""
@@ -315,28 +156,6 @@ class AbstractAttributeValue(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    def _get_value(self):
-        value = getattr(self, 'value_%s' % self.attribute.field_type)
-        if hasattr(value, 'all'):
-            value = value.all()
-        return value
-
-    def _set_value(self, new_value):
-        attr_label = 'value_%s' % self.attribute.field_type
-
-        if self.attribute.is_option and isinstance(new_value, str):
-            # Need to look up instance of AttributeOption
-            new_value = self.attribute.option_group.options.get(
-                option=new_value)
-        elif self.attribute.is_multi_option:
-            getattr(self, attr_label).set(new_value)
-            return
-
-        setattr(self, attr_label, new_value)
-        return
-
-    value = property(_get_value, _set_value)
-
     class Meta:
         abstract = True
         app_label = 'person'
@@ -346,6 +165,14 @@ class AbstractAttributeValue(models.Model):
 
     def __str__(self):
         return self.summary()
+
+    def _get_value(self):
+        value = getattr(self, 'value_%s' % self.attribute.field_type)
+        if hasattr(value, 'all'):
+            value = value.all()
+        return value
+
+    value = property(_get_value)
 
     def summary(self):
         """
@@ -363,33 +190,6 @@ class AbstractAttributeValue(models.Model):
         """
         property_label = '_%s_as_text' % self.attribute.field_type
         return getattr(self, property_label, self.value)
-
-    @property
-    def _multi_option_as_text(self):
-        return ', '.join(
-            str(option) for option in self.value_multi_option.all())
-
-    @property
-    def _option_as_text(self):
-        return str(self.value_option)
-
-    @property
-    def _richtext_as_text(self):
-        return strip_tags(self.value)
-
-    @property
-    def value_as_html(self):
-        """
-        Returns a HTML representation of the attribute's value. To customise
-        e.g. image attribute values, declare a _image_as_html property and
-        return e.g. an <img> tag.  Defaults to the _as_text representation.
-        """
-        property_label = '_%s_as_html' % self.attribute.field_type
-        return getattr(self, property_label, self.value_as_text)
-
-    @property
-    def _richtext_as_html(self):
-        return mark_safe(self.value)
 
 
 class AbstractAttributeOptionGroup(models.Model):

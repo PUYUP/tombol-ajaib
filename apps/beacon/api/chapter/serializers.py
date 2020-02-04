@@ -29,6 +29,7 @@ ChapterRevision = get_model('beacon', 'ChapterRevision')
 
 class ChapterSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)
     permalink = serializers.SerializerMethodField(read_only=True)
@@ -84,6 +85,7 @@ class ChapterSerializer(serializers.ModelSerializer):
 
 class ChapterCreateSerializer(serializers.ModelSerializer):
     creator = serializers.HiddenField(default=CurrentPersonDefault())
+    creator_uuid = serializers.UUIDField(source='creator.uuid', read_only=True)
     published = serializers.SerializerMethodField(read_only=True)
     draft = serializers.SerializerMethodField(read_only=True)
     permalink = serializers.SerializerMethodField(read_only=True)

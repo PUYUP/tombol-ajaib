@@ -1,17 +1,22 @@
 import asyncio
-from datetime import date, datetime
 
-from django.db import models, IntegrityError
-from django.db.models import Q, F, Case, When, Value, CharField, Subquery, Exists, OuterRef
+from django.db import models
+from django.db.models import Subquery, Exists, OuterRef, Prefetch
 from django.utils.translation import ugettext_lazy as _
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import RegexValidator, validate_email, URLValidator
 from django.core.files import File
+from django.contrib.contenttypes.models import ContentType
+from django.utils.html import strip_tags
 
 # PROJECT UTILS
 from utils.generals import get_model
 
+# LOCAL UTILS
+from ..utils.constant import FIELD_VALIDATION_CHOICES
+
 loop = asyncio.get_event_loop()
+
 
 def upload_file(file_data):
     instance = file_data.get('instance', None)
@@ -27,323 +32,180 @@ def upload_file(file_data):
 
 
 class ValidationManager(models.Manager):
-    """===========================================================
-    Start validators
-    ==========================================================="""
-    def validate_value(self, field_type, value):
-        validator = getattr(self, '_validate_%s' % field_type)
-        validator(value)
+    # ...
+    # Get validation values
+    # ...
+    def validation_values(self, *agrs, **kwargs):
+        value_params = dict()
+        request = kwargs.get('request', None)
+        identifiers = kwargs.get('identifiers', list())
+        content_type = ContentType.objects.get(app_label='person', model='person')
+        validationvalue_model = self.model.validationvalue_set.field.model
+        person_pk = request.person_pk
 
-    def validate_required(self, field_type, value):
-        if not value:
-            raise ValidationError(_("Value is required"))
-
-    def _validate_text(self, value):
-        if not isinstance(value, str):
-            raise ValidationError(_("Must be str"))
-    _validate_richtext = _validate_text
-
-    def _validate_integer(self, value):
-        try:
-            int(value)
-        except ValueError:
-            raise ValidationError(_("Must be an integer"))
-
-    def _validate_file(self, value):
-        if value and not isinstance(value, File):
-            raise ValidationError(_("Must be a file."))
-
-    def _validate_image(self, value):
-        if value and not isinstance(value, File):
-            raise ValidationError(_("Must be a image."))
-
-    def _validate_email(self, value):
-        if value:
-            validate_email(value)
-
-    def _validate_url(self, value):
-        if value:
-            try:
-                validate = URLValidator(schemes=('http', 'https'))
-                validate(value)
-            except ValidationError:
-                raise ValidationError(_("Enter a valid URL."))
-
-    """===========================================================
-    Validations called here
-    ==========================================================="""
-    def get_validation(self, identifier, person, content_type):
-        if not identifier or not person or not content_type:
-            return None
-
-        queryset = self.prefetch_related('content_type') \
-            .filter(
-                content_type=content_type,
-                identifier=identifier,
-                validationvalue__object_id=person.pk) \
-            .distinct()
-        
-        if not queryset.exists():
-            return None
-
-        # Extract validation value
-        ValidationValue = get_model('person', 'ValidationValue')
-        validation_values = ValidationValue.objects \
-            .prefetch_related('validation',  'content_type') \
-            .select_related('validation',  'content_type') \
-            .filter(
-                validation__identifier__in=OuterRef('identifier'),
-                object_id=person.pk)
-
-        annotate = dict()
-        for q in queryset:
-            value_field = 'value_' + q.field_type
-            annotate[value_field] = Subquery(validation_values.values(value_field)[:1])
-            annotate['value_uuid'] = Subquery(validation_values.values('uuid')[:1])
-            annotate['is_verified'] = Subquery(validation_values.values('is_verified')[:1])
-
-        # Call value each field
-        return queryset.annotate(**annotate).first()
-
-    def get_validations(self, identifiers, person, content_type=None):
-        if (not identifiers and type(identifiers) != list()) or not person:
-            return None
-
-        roles = person.roles.filter(is_active=True) \
+        role_objs = request.person.roles.filter(is_active=True).prefetch_related('person') \
             .values_list('id', flat=True)
 
-        queryset = self.prefetch_related('content_type', 'roles') \
-            .filter(
-                content_type=content_type,
-                identifier__in=identifiers,
-                roles__in=roles) \
-            .distinct()
-
-        if not queryset.exists():
-            return None
-
-        # Extract validation value
-        ValidationValue = get_model('person', 'ValidationValue')
-        validation_values = ValidationValue.objects \
-            .prefetch_related('validation',  'content_type') \
-            .select_related('validation',  'content_type') \
-            .filter(
-                validation__identifier__in=OuterRef('identifier'),
-                object_id=person.pk)
-
-        annotate = dict()
-        for q in queryset:
-            value_field = 'value_' + q.field_type
-            annotate[value_field] = Subquery(validation_values.values(value_field)[:1])
-            annotate['value_uuid'] = Subquery(validation_values.values('uuid')[:1])
-            annotate['is_verified'] = Subquery(validation_values.values('is_verified')[:1])
-        return queryset.annotate(**annotate)
-
-    def check_validations(self, person, content_type=None):
-        roles = person.roles.filter(is_active=True) \
-            .values_list('id', flat=True)
-
-        queryset = self.prefetch_related('content_type', 'roles') \
-            .filter(
-                content_type=content_type,
-                is_required=True,
-                roles__in=roles) \
-            .distinct()
-
-        if not queryset.exists():
-            return None
-
-        # Extract validation value
-        ValidationValue = get_model('person', 'ValidationValue')
-        validation_values = ValidationValue.objects \
-            .prefetch_related('validation',  'content_type') \
-            .select_related('validation',  'content_type') \
-            .filter(
-                validation__identifier__in=OuterRef('identifier'),
-                object_id=person.pk,
-                is_verified=True)
-
-        annotate = dict()
-        for q in queryset:
-            value_field = 'value_' + q.field_type
-            annotate['is_verified'] = Exists(validation_values)
-            annotate[value_field] = Exists(validation_values)
-        return queryset.annotate(**annotate)
-
-    """===========================================================
-    Validations set or update here
-    ==========================================================="""
-    def set_value(self, params, person, content_type):
-        """Params:
-        {
-            'identifier': 'value',
-        }
-
-        Bulk create need parameter;
-        validation, value, content_type and object_id
-        """
-        if not params or not person or not content_type:
-            return False
-
-        ValidationValue = get_model('person', 'ValidationValue')
-
-        roles = person.roles.filter(is_active=True).prefetch_related('person') \
-            .values_list('id', flat=True)
-        roles_q = Q(roles__in=roles)
-
-        keys_q = Q()
-        param_keys = [key for key in params if key]
-        if param_keys:
-            keys_q = Q(identifier__in=param_keys)
-
-        # Grab the current validation value
-        value_objects = person.validation_values \
-            .prefetch_related('validation', 'content_type') \
+        validation_value_objs = validationvalue_model.objects \
+            .prefetch_related(Prefetch('validation'), Prefetch('content_type')) \
             .select_related('validation', 'content_type') \
-            .filter(Q(content_type=content_type)) \
-            .values('validation__identifier')
+            .filter(
+                validation_id=OuterRef('id'),
+                content_type=content_type.id,
+                object_id=person_pk)
 
-        # Exlude validation not assigned to create new value
-        value_params = list()
-        queryset = self.prefetch_related('content_type', 'roles') \
-            .filter(roles_q, keys_q, Q(content_type=content_type)) \
-            .exclude(identifier__in=value_objects) \
-            .distinct()
+        for item in FIELD_VALIDATION_CHOICES:
+            field_type = item[0]
+            field_value = 'value_%s' % field_type
+            value_params[field_value] = Subquery(validation_value_objs.values(field_value)[:1])
 
-        if queryset.exists():
-            for item in queryset:
-                identifier = item.identifier
-                field_type = item.field_type
-                is_required = item.is_required
-                value_field = 'value_%s' % field_type
+        value_params['value_uuid'] = Subquery(validation_value_objs.values('uuid')[:1])
+        value_params['is_verified'] = Subquery(validation_value_objs.values('is_verified')[:1])
 
-                # Grab value
-                try:
-                    value = params[identifier]['value_field']
-                except KeyError:
-                    value = None
+        queryset = self.model.objects \
+            .filter(content_type=content_type.id, identifier__in=identifiers, roles__in=role_objs) \
+            .annotate(**value_params)
+        return queryset
 
-                # Set all parameter
-                value_object = ValidationValue(
-                    validation=item,
-                    content_type=content_type,
-                    object_id=person.id)
+    # ...
+    # Update validation values
+    # ...
+    def update_values(self, *agrs, **kwargs):
+        request = kwargs.get('request', None)
+        identifiers = kwargs.get('identifiers', list())
+        person_pk = request.person_pk
+        content_type = ContentType.objects.get(app_label='person', model='person')
+        validationvalue_model = self.model.validationvalue_set.field.model
+        value_params = dict()
+        fields_attr_target = list()
+        create_attr_values = list()
+        update_attr_values = list()
 
-                # Value is File or Image
-                if isinstance(value, File):
-                    file_data = {
-                        'field_type': field_type,
-                        'instance': value_object,
-                        'value': value
-                    }
-                    loop.run_in_executor(None, upload_file, file_data)
-
-                else:
-                    setattr(value_object, value_field, value)
-
-                # Validate
-                self.validate_value(field_type, value)
-
-                if is_required:
-                    self.validate_required(field_type, value)
-
-                # Collect validation value object
-                value_params.append(value_object)
-
-            # And final create all
-            if value_params:
-                return ValidationValue.objects \
-                    .bulk_create(value_params, ignore_conflicts=True)
-            return False
-        return False
-
-    def update_value(self, params, person, content_type):
-        """All params like 'set_value' above"""
-        if not params or not person or not content_type:
-            return False
-
-        roles = person.roles.filter(is_active=True) \
+        role_objs = request.person.roles.filter(is_active=True).prefetch_related('person') \
             .values_list('id', flat=True)
-        roles_q = Q(validation__roles__in=roles)
 
-        keys_q = Q()
-        param_keys = [key for key in params if key]
-        if param_keys:
-            keys_q = Q(validation__identifier__in=param_keys)
-
-        # Get all validation values from this entity (ex: person)
-        # But limitation by roles and keys (identifiers)
-        values_queryset = person.validation_values
-        queryset = values_queryset.prefetch_related('validation', 'content_type') \
+        validation_value_objs = validationvalue_model.objects \
+            .prefetch_related(Prefetch('validation'), Prefetch('content_type')) \
             .select_related('validation', 'content_type') \
-            .filter(roles_q, keys_q, Q(content_type=content_type)) \
-            .distinct()
+            .filter(
+                validation_id=OuterRef('id'),
+                content_type=content_type.id,
+                object_id=person_pk)
 
-        # Create!
-        self.set_value(params, person, content_type)
+        for item in FIELD_VALIDATION_CHOICES:
+            field_type = item[0]
+            field_value = 'value_%s' % field_type
+            value_params[field_value] = Exists(validation_value_objs)
+            value_params['value_id'] = Subquery(validation_value_objs.values('id')[:1])
 
-        # Update!
-        if queryset.exists():
-            ValidationValue = getattr(values_queryset, 'model', None)
+        queryset = self.model.objects \
+            .filter(content_type=content_type.id, identifier__in=identifiers, roles__in=role_objs) \
+            .annotate(**value_params)
 
-            if not ValidationValue:
-                return False
+        for item in queryset:
+            is_unique = item.is_unique
+            identifier = item.identifier
+            field_type = item.field_type
+            field_value = 'value_%s' % field_type
+            value = request.data.get(identifier, None)
+            is_exist = getattr(item, field_value, False)
 
-            value_fields = list()
-            value_object_list = list()
+            value_obj = validationvalue_model(
+                validation_id=item.id,
+                content_type=content_type,
+                object_id=person_pk)
 
-            for item in queryset:
-                identifier = item.validation.identifier
-                field_type = item.validation.field_type
-                is_required = item.validation.is_required
-                value_field = 'value_%s' % field_type
+            # On update object need Target field to updated
+            if is_exist:
+                setattr(value_obj, 'id', item.value_id)
 
-                # Get validation_value object
-                value_object = queryset.get(
-                    validation__identifier=identifier,
-                    content_type=content_type,
-                    object_id=person.pk)
+            if isinstance(value, File):
+                file_data = {
+                    'field_type': field_type,
+                    'instance': value_obj,
+                    'value': value
+                }
+                loop.run_in_executor(None, upload_file, file_data)
 
-                # Grab value
-                try:
-                    param = params[identifier]
-                except KeyError:
-                    param = None
-  
-                value = param.get('value_field', None)
-                is_secure_code_valid = param.get('is_secure_code_valid', None)
+            else:
+                value = strip_tags(value)
 
-                if isinstance(value, File):
-                    file_data = {
-                        'field_type': field_type,
-                        'instance': value_object,
-                        'value': value
-                    }
-                    loop.run_in_executor(None, upload_file, file_data)
+                # Check unique
+                if is_unique:
+                    duplicate_objs = validationvalue_model.objects \
+                        .filter(
+                            content_type=content_type,
+                            validation__identifier=identifier,
+                            is_verified=True,
+                            **{'value_%s__iexact' % field_type: value}) \
+                        .exclude(object_id=person_pk)
 
+                    if duplicate_objs.exists():
+                        raise ValidationError(_("%s sudah digunakan, coba yang lain." % item.label))
+
+                setattr(value_obj, field_value, value)
+                setattr(value_obj, 'is_verified', True)
+
+                # Create or Update a value object
+                if is_exist:
+                    # On update object need Target field to updated
+                    fields_attr_target.append(field_value)
+                    update_attr_values.append(value_obj)
                 else:
-                    setattr(value_object, value_field, value)
+                    create_attr_values.append(value_obj)
 
-                    # Change is_verified value to True
-                    if is_secure_code_valid:
-                        setattr(value_object, 'is_verified', True)
-                        value_fields.append('is_verified')
+        # Create
+        if create_attr_values:
+            validationvalue_model.objects.bulk_create(create_attr_values, ignore_conflicts=True)
 
-                    # Collect field value, ex: 'value_text'
-                    value_fields.append(value_field)
+        # Update
+        if update_attr_values:
+            validationvalue_model.objects.bulk_update(update_attr_values, fields_attr_target)
 
-                # Validate
-                self.validate_value(field_type, value)
+        # JSON Api
+        queryset = self.validation_values(identifiers=identifiers, request=request)
+        return queryset
 
-                if is_required:
-                    self.validate_required(field_type, value)
+    def update_value(self, identifier, value, *args, **kwargs):
+        """ Return a single object, so use '.get()' """
+        request = kwargs.get('request', None)
+        request.data[identifier] = value
+        queryset = self.update_values(identifiers=[identifier], request=request)
 
-                # Make a list from validation value object
-                value_object_list.append(value_object)
+        # Update person is_validated if all validation passed
+        is_passed = self.is_passed(request=request)
+        if is_passed:
+            person = getattr(request.user, 'person', None)
+            if person:
+                person.is_validated = True
+                person.save()
 
-            # If update success return 'None'
-            if value_object_list:
-                return ValidationValue.objects.bulk_update(
-                    value_object_list, value_fields)
-            return None
-        return False
+        return queryset.get()
+
+    # ...
+    # Check validation is passed All
+    # Only for required field
+    # ...
+    def is_passed(self, *args, **kwargs):
+        valids = list()
+        request = kwargs.get('request', None)
+        person_pk = request.person_pk
+        content_type = ContentType.objects.get(app_label='person', model='person')
+        validationvalue_model = self.model.validationvalue_set.field.model
+
+        validation_value_objs = validationvalue_model.objects \
+            .filter(
+                validation_id=OuterRef('id'),
+                content_type=content_type.id,
+                object_id=person_pk)
+
+        validation_objs = self.model.objects \
+            .filter(is_required=True) \
+            .annotate(is_verified=Subquery(validation_value_objs.values('is_verified')[:1]))
+
+        if not validation_objs.exists():
+            return True
+
+        for item in validation_objs:
+            valids.append(item.is_verified)
+        return None not in valids and False not in valids and '' not in valids

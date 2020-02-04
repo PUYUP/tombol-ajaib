@@ -1,24 +1,26 @@
-<div class="border-bottom mb-4 pb-3">
+<div class="border-bottom mb-3 pb-3">
     <h1 class="mb-2 mt-0">
         {% if guide_obj.published_label %}
-            {{ guide_obj.published_label }}
+            {{ guide_obj.published_label | safe }}
         {% else %}
-            {{ guide_obj.draft_label }}
+            {{ guide_obj.draft_label | safe }}
         {% endif %}
     </h1>
 
-    <span class="text-muted">
-        Revisi {{ guide_obj.published_version }} &nbsp;|&nbsp; Pembaruan {{ guide_obj.date_updated }}
+    <span class="text-muted docs-content__meta">
+        {{ guide_obj.category.label }} &nbsp;|&nbsp; 
+        Revisi {{ guide_obj.published_version }} &nbsp;|&nbsp; 
+        Pembaruan {{ guide_obj.published_date_updated }}
     </span>
 </div>
 
 <div class="form-group">
-    <p class="mb-0">{{ guide_obj.published_description }}</p>
+    <p class="mb-0">{{ guide_obj.published_description | safe }}</p>
 </div>
 
 <div class="form-group">
     <label for="changelog">Changelog</label>
-    <p class="mb-0">{{ guide_obj.published_changelog }}</p>
+    <p class="mb-0">{{ guide_obj.published_changelog | safe }}</p>
 </div>
 
 {% if introduction_published_objs %}
@@ -27,7 +29,7 @@
     
         <ol class="pl-3 introduction-list">
             {% for item in introduction_published_objs %}
-                <li>{{ item.description }}</li>
+                <li>{{ item.description | safe }}</li>
             {% endfor %}
         </ul>
     </div>

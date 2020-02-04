@@ -6,6 +6,7 @@ from django.utils.decorators import method_decorator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.cache import never_cache
 from django.contrib.contenttypes.models import ContentType
+from django.contrib import messages
 
 # DRF
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -105,7 +106,7 @@ class ChapterApiView(viewsets.ViewSet):
                 **draft_fields,
                 **published_fields) \
             .order_by('sort_stage', 'date_created') \
-            .exclude(~Q(creator__id=person_pk), ~Q(published_status=PUBLISHED))
+            .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
 
         if person_uuid:
             queryset = queryset.filter(creator__uuid=person_uuid)
@@ -141,25 +142,26 @@ class ChapterApiView(viewsets.ViewSet):
 
         if queryset.exists():
             queryset.delete()
+            messages.add_message(request, messages.INFO, _("Bab berhasil dihapus."))
 
         return Response(
             {'detail': _("Berhasil dihapus.")},
             status=response_status.HTTP_204_NO_CONTENT)
 
-    # Sort stagte
+    # Sort stage
     @method_decorator(never_cache)
     @transaction.atomic
     @action(methods=['post'], detail=False,
             permission_classes=[IsAuthenticated],
             url_path='sort', url_name='sort_stage')
     def sort_stage(self, request):
-        person = request.person
+        person_pk = request.person_pk
         sortable = request.data.get('sortable', None)
         sortable_list = sortable.split(',')
 
         chapter_list = list()
         chapter_objs = Chapter.objects.filter(
-            pk__in=sortable_list, creator=person)
+            id__in=sortable_list, creator_id=person_pk)
 
         if chapter_objs.exists() and sortable_list:
             for index, item in enumerate(sortable_list, start=1):

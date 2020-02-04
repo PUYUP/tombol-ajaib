@@ -7,7 +7,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 
 # LOCAL UTILS
 from apps.beacon.utils.constant import (
-    DRAFT, STATUS_CHOICES, PUBLISHED)
+    DRAFT, STATUS_CHOICES, PUBLISHED, TYPE_CHOICES, PUBLIC)
 
 from .managers import GuideRevisionManager
 
@@ -20,8 +20,10 @@ class AbstractGuide(models.Model):
     category = models.ForeignKey(
         'beacon.Category', null=True, on_delete=models.SET_NULL,
         related_name='guides')
-    label = models.CharField(max_length=255)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=255)
+    visibility = models.CharField(
+        choices=TYPE_CHOICES, default=PUBLIC, null=True, max_length=255)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 
@@ -66,9 +68,11 @@ class AbstractChapter(models.Model):
         on_delete=models.CASCADE,
         related_name='chapters')
 
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     label = models.CharField(max_length=255, null=True)
     stage = models.BigIntegerField(null=True)
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    visibility = models.CharField(
+        choices=TYPE_CHOICES, default=PUBLIC, null=True, max_length=255)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 
@@ -110,6 +114,8 @@ class AbstractExplain(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     label = models.CharField(max_length=255, null=True)
     stage = models.BigIntegerField(null=True)
+    visibility = models.CharField(
+        choices=TYPE_CHOICES, default=PUBLIC, null=True, max_length=255)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 
@@ -175,6 +181,8 @@ class AbstractSheet(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     label = models.CharField(max_length=255, null=True)
     stage = models.BigIntegerField(null=True)
+    visibility = models.CharField(
+        choices=TYPE_CHOICES, default=PUBLIC, null=True, max_length=255)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 

@@ -6,131 +6,35 @@
 {% endblock %}
 
 {% block content %}
-    <div class="container main-content d-flex">
-        <div id="docs-nav" class="docs-nav pr-4 align-self-stretch">
-            <div class="docs-nav__inner">
-                <div class="tools d-flex w-100 align-items-center">
-                    {% if guide_obj.creator.id == person_pk %}
-                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter" data-backdrop="true">
-                            Tambah Bab
-                        </button>
-                    {% else %}
-                        <button type="button" class="btn btn-info btn-block pl-4 pr-4" data-toggle="modal" data-target="#modalAddChapter" data-backdrop="true">
-                            Tampilkan Semua
-                        </button>
-                    {% endif %}
-                </div>
-
-                <div class="chapter-wrap docs-scroller">
-                    <div class="chapter-list pr-3 pb-3 pt-2">
-                        <div class="chapter-group">
-                            <h3 class="header">
-                                <a href="{% url 'guide_detail' guide_obj.uuid %}" class="text-dark">
-                                    Pengantar
-                                </a>
-                            </h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div> <!-- /.docs-nav -->
+    <div class="container main-content d-lg-flex d-xl-flex">
+        {% include 'templates/general/docnav.html' %}
 
         <div class="docs-content flex-grow-1">
             {% if guide_obj.creator.id == person_pk %}
-                {% include 'templates/guide/detail-editor.html' with guide_obj=guide_obj introduction_draft_objs=introduction_draft_objs introduction_published_objs=introduction_published_objs %}
+                {% include 'templates/guide/detail-editor.html' %}
             {% else %}
-                 {% include 'templates/guide/detail-public.html' with guide_obj=guide_obj introduction_published_objs=introduction_published_objs %}
+                 {% include 'templates/guide/detail-public.html' %}
             {% endif %}
         </div> <!-- /.docs-content -->
+
+        <div class="docs-tools">
+        </div> <!-- /.sidebar -->
     </div> <!-- /.main content -->
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{% static 'vendors/scripts/chapter.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/scripts/chapter-list.js' %}"></script>
+
+    <script type="text/javascript">
+        loadChapter('{{ guide_obj.uuid }}', '', '{{ user.person.uuid }}');
+    </script>
 
     {% if guide_obj.creator.id == person_pk %}
+        <script type="text/javascript" src="{% static 'vendors/scripts/chapter-add.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/scripts/explain-add.js' %}"></script>
         <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
 
         <script type="text/javascript">
-            $(document).on('submit', '.form-chapter', function(event) {
-                event.preventDefault();
-
-                var formValuesObj = getFormValues($(this));
-                var saveValuesObj = {};
-
-                $.each(formValuesObj, function(i, v) {
-                    saveValuesObj[i] = v.value;
-                });
-
-                submitChapterHandler($(this), saveValuesObj);
-
-                $(this).find('button').prop('disabled', true);
-                $(this).find('button').find('.spinner').removeClass('d-none');
-            });
-
-            // ...
-            // SUBMIT CHAPTER HANDLER
-            // ...
-            function submitChapterHandler($form=null, $data) {
-                $.ajax({
-                    method: "POST",
-                    url: '/api/beacon/chapters/',
-                    headers: { 'X-CSRFToken': Cookies.get('csrftoken') },
-                    xhrFields: { withCredentials: true },
-                    data: {
-                        ...$data
-                    },
-                    success: function (response) {
-                        var item = `<div id="item_${response.id}" class="chapter-group" data-uuid="${response.uuid}">
-                            <h3 class="header">
-                                <a href="${response.permalink}" class="text-dark">
-                                    ${response.label}
-                                </a>
-                            </h3>
-                        </div>`;
-
-                        $('.chapter-list').append(item);
-                        $('#modalAddChapter').modal('hide');
-                        $form[0].reset();
-
-                        $('.chapter-wrap').animate({
-                            scrollTop: $('#item_' + response.id).offset().top
-                        }, 0);
-                    },
-                    error: function (error) {
-                        if (error && error.responseJSON) {
-                            var errorJSON = error.responseJSON,
-                                errorMessage = [];
-
-                            $.each(errorJSON, function (index, item) {
-                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-
-                                if (Array.isArray(item)) {
-                                    errorMessage.push(label + item.join(' '));
-                                } else {
-                                    errorMessage.push(label + item);
-                                }
-                            });
-
-                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
-
-                            // Show error
-                            if (errorMessage) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Oops...',
-                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
-                                });
-                            }
-                        }
-                    },
-                    complete: function(xhr, status) {
-                        $form.find('button').prop('disabled', false);
-                        $form.find('button').find('.spinner').addClass('d-none');
-                    }
-                });
-            }
-
             // ...
             // UPDATE Guide
             // ...
@@ -212,7 +116,9 @@
                                 icon: 'success',
                                 title: 'Pembaruan Berhasil',
                                 text: 'Menyiapkan editor...',
+                                showCloseButton: false,
                                 showCancelButton: false,
+                                showConfirmButton: false,
                                 allowOutsideClick: false,
                                 allowEscapeKey: false,
                             });
@@ -224,7 +130,7 @@
                             if (response.status === '{{ PUBLISHED }}') {
                                 Swal.fire({
                                     icon: 'success',
-                                    title: 'Publikasi Berhasil',
+                                    title: 'Berhasil Diterbitkan',
                                     text: 'Sedang mengalihkan...',
                                     showCancelButton: false,
                                     allowOutsideClick: false,
@@ -278,6 +184,43 @@
             }
 
             // ...
+            // DELETE GUIDE
+            // ...
+            $(document).on('click', '#delete-guide', function(event) {
+                event.preventDefault();
+
+                var uuid = $(this).data('uuid'),
+                    redirect = $(this).data('redirect');
+ 
+                Swal.fire({
+                    title: 'Konfirmasi Penghapusan',
+                    text: 'Apakah yakin tindakan ini? Panduan ini beserta Bab dan Materi akan terhapus selamanya.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Konfirmasi',
+                    showLoaderOnConfirm: true,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    customClass: {
+                        input: 'input-class text-center text-keyup',
+                    },
+                    input: 'text',
+                    inputAttributes: {
+                        autocapitalize: 'off',
+                        placeholder: 'Ketik kata "HAPUS"',
+                    },
+                    inputValidator: (value) => {
+                        if (!value || value !== 'HAPUS') {
+                            return 'Ketik kata "HAPUS".'
+                        }
+                    },
+                }).then((result) => {
+                    if (result.value) {
+                        deleteHandler(uuid, 'guides', redirect);
+                    }
+                });
+            });
+
+            // ...
             // SUBMIT Introduction
             // ...
             var $inputIntroduction = `<div class="form form-introduction mb-3">
@@ -285,7 +228,7 @@
                     <textarea class="form-control w-100" name="description" placeholder="Ketik sorotan..."></textarea>
                 </div>
 
-                <button type="submit" id="saveIntroduction" class="btn btn-outline-info btn-sm pl-4 pr-4">
+                <button type="submit" id="save-introduction" class="btn btn-outline-info btn-sm pl-4 pr-4">
                     <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
                         <span class="sr-only">Loading...</span>
                     </div>
@@ -293,25 +236,25 @@
                     Simpan
                 </button>
 
-                <button type="button" id="cancelAddIntroduction" class="btn btn-sm pl-4 pr-4 ml-1">Batal</button>
+                <button type="button" id="cancel-introduction" class="btn btn-sm pl-4 pr-4 ml-1">Batal</button>
             </div>`;
 
-            $(document).on('click', '#addIntroduction', function(event) {
+            $(document).on('click', '#add-introduction', function(event) {
                 event.preventDefault();
                 $(this).hide();
 
                 $('.introduction-list').append('<li class="add-introduction pt-2">' + $inputIntroduction + '</li>');
             });
 
-            $(document).on('click', '#cancelAddIntroduction', function(event) {
+            $(document).on('click', '#cancel-introduction', function(event) {
                 event.preventDefault();
 
-                $('#addIntroduction').show();
+                $('#add-introduction').show();
                 $('.add-introduction').remove();
                 $(this).closest('.form').remove();
             });
 
-            $(document).on('click', '#saveIntroduction', function(event) {
+            $(document).on('click', '#save-introduction', function(event) {
                 event.preventDefault();
 
                 var $form = $(this).closest('.form'),
@@ -336,19 +279,19 @@
             // ...
             // UPDATE Introduction
             // ...
-            $(document).on('click', '#updateIntroduction', function(event) {
+            $(document).on('click', '#update-introduction', function(event) {
                 event.preventDefault();
 
                 var uuid = $(this).data('uuid'),
                     description = $(this).closest('li').find('span').html();
                 
-                $('#addIntroduction').hide();
+                $('#add-introduction').hide();
                 $('<li class="add-introduction pt-2">' + $inputIntroduction + '</li>').insertBefore('li#introduction_' + uuid);
                 $('.add-introduction textarea').val(description);
-                $('.add-introduction #saveIntroduction').attr('data-uuid', uuid);
+                $('.add-introduction #save-introduction').attr('data-uuid', uuid);
             });
 
-            $(document).on('click', '#deleteObject', function(event) {
+            $(document).on('click', '#delete-introduction', function(event) {
                 event.preventDefault();
 
                 var uuid = $(this).data('uuid');
@@ -399,14 +342,14 @@
                             var item = `<li id="introduction_${response.uuid}">
                                 <span>${response.description}</span>
 
-                                <a href="#" id="updateIntroduction" class="ml-2" data-uuid="${response.uuid}">Sunting</a>
-                                <a href="#" id="deleteObject" class="text-danger ml-2" data-uuid="${response.uuid}">Hapus</a>
+                                <a href="#" id="update-introduction" class="ml-2" data-uuid="${response.uuid}">Sunting</a>
+                                <a href="#" id="delete-introduction" class="text-danger ml-2" data-uuid="${response.uuid}">Hapus</a>
                             </li>`;
 
                             $('.introduction-list').append(item);
                         }
 
-                        $('#addIntroduction').show();
+                        $('#add-introduction').show();
                         $('.add-introduction').remove();
                     },
                     error: function(error) {
@@ -442,66 +385,6 @@
                     }
                 });
             }
-
-            // ...
-            // DELETE HANDLER
-            // ...
-            function deleteHandler(uuid, path, redirectTo=null) {
-                $.ajax({
-                    method: 'DELETE',
-                    url: '/api/beacon/' + path + '/' + uuid + '/',
-                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
-                    xhrFields: {withCredentials: true},
-                    success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Terhapus!',
-                            text: 'Sedang mengalihkan...',
-                            showCloseButton: false,
-                            showCancelButton: false,
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                        });
-
-                        setTimeout(function() {
-                            if (redirectTo) window.location.href = redirectTo;
-                            if (!redirectTo) window.location.reload();
-                        }, 1000);
-                    },
-                    error: function(error) {
-                        if (error && error.responseJSON) {
-                            var errorJSON = error.responseJSON,
-                                errorMessage = [];
-
-                            $.each(errorJSON, function(index, item) {
-                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
-                                
-                                if (Array.isArray(item)) {
-                                    errorMessage.push(label + item.join(' '));
-                                } else {
-                                    errorMessage.push(label + item);
-                                }
-                            });
-
-                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
-
-                            // Show error
-                            if (errorMessage) {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Oops...',
-                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
-                                });
-                            }
-                        }
-                    }
-                });
-            }
         </script>
     {% endif %}
-
-    <script type="text/javascript">
-        loadChapter('{{ guide_obj.uuid }}');
-    </script>
 {% endblock %}
