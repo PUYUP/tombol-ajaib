@@ -19,27 +19,11 @@ class HomeView(View):
     context = dict()
 
     def get(self, request):
-        person_pk = request.person_pk
-        revision_fields = ('uuid', 'label', 'date_updated', 'version', 'status')
-        revision_params = dict()
-        revisions = GuideRevision.objects.filter(guide_id=OuterRef('pk'))
-
-        for item in revision_fields:
-            revision_params['revision_%s' % item] = Case(
-                When(num_revision=1, then=Subquery(revisions.values(item)[:1])),
-                default=Subquery(revisions.filter(status=PUBLISHED).values(item)[:1])
-            )
-
-        guides = Guide.objects \
+        category_objs = Category.objects \
             .annotate(
-                num_revision=Count('guide_revisions'),
-                **revision_params) \
-            .order_by('-revision_date_updated') \
-            .exclude(~Q(creator_id=person_pk), ~Q(revision_status=PUBLISHED))
-
-        category_objs = Category.objects.all()
+                guide_count=Count('pk', filter=Q(guides__guide_revisions__status=PUBLISHED))) \
+            .all()
 
         self.context['title'] = _("Beranda")
-        self.context['guides'] = guides
         self.context['category_objs'] = category_objs
         return render(request, self.template_name, self.context)

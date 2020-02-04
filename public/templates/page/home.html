@@ -21,7 +21,11 @@
                                 <div class="embed-responsive-item">
                                     <a href="{% url 'category_guide_list' item.uuid %}"
                                         class="d-flex flex-column align-items-center justify-content-center btn btn-outline-secondary h-100 w-100">
-                                        {{ item.label }}
+                                        
+                                        <div>
+                                            <strong class="d-block">{{ item.label }}</strong>
+                                            <small>{{ item.guide_count }} panduan</small>
+                                        </div>
                                     </a>
                                 </div>
                             </div>
