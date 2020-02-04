@@ -116,7 +116,11 @@ class ExplainDetailView(View):
                 content_draft_obj = None
 
             if content_draft_obj and blob:
-                content_draft = blob.decode('utf-8')
+                if type(blob) is memoryview:
+                    mv = memoryview(blob)
+                    content_draft = mv.tobytes().decode('utf-8')
+                else:
+                    content_draft = blob.decode('utf-8')
 
         # Content Object PUBLISHED
         content_published = None
@@ -130,7 +134,11 @@ class ExplainDetailView(View):
                 content_published_obj = None
 
             if content_published_obj and blob:
-                content_published = blob.decode('utf-8')
+                if type(blob) is memoryview:
+                    mv = memoryview(blob)
+                    content_published = mv.tobytes().decode('utf-8')
+                else:
+                    content_published = blob.decode('utf-8')
 
         self.context['person_pk'] = person_pk
         self.context['title'] = title
