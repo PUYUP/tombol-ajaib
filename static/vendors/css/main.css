@@ -137,6 +137,19 @@ a {
     color: rgba(255,255,255,.65);
 }
 
+/***
+ * EDITOR
+ */
+.editor-toolbar.fullscreen,
+.CodeMirror-fullscreen {
+    z-index: 99999 !important;
+}
+
+.auto-size {
+    box-sizing: border-box;
+    resize: none;
+}
+
 @media (min-width: 992px) {
     .navbar-expand-lg .navbar-nav .nav-link {
         padding-right: .75rem;

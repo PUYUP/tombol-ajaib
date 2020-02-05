@@ -1,3 +1,5 @@
+import markdown
+
 from django.views import View
 from django.db.models import (
     Count, OuterRef, Subquery, Case, When, F, Prefetch,
@@ -146,7 +148,7 @@ class ExplainDetailView(View):
         self.context['explain_obj'] = queryset
         self.context['guide_obj'] = queryset.guide
         self.context['content_draft'] = content_draft
-        self.context['content_published'] = content_published
+        self.context['content_published'] = markdown.markdown(content_published, safe_mode='escape') if content_published else ''
         self.context['PUBLISHED'] = PUBLISHED
         self.context['DRAFT'] = DRAFT
         self.context['status_choices'] = status_choices

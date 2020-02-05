@@ -22,6 +22,12 @@
     </div> <!-- /.main content -->
 {% endblock %}
 
+{% block css %}
+    {% if guide_obj.creator.id == person_pk %}
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/simplemde/simplemde.min.css' %}">
+    {% endif %}
+{% endblock %}
+
 {% block js %}
     <script type="text/javascript" src="{% static 'vendors/scripts/chapter-list.js' %}"></script>
     
@@ -33,8 +39,22 @@
         <script type="text/javascript" src="{% static 'vendors/scripts/chapter-add.js' %}"></script>
         <script type="text/javascript" src="{% static 'vendors/scripts/explain-add.js' %}"></script>
         <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/simplemde/simplemde.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'vendors/scripts/autosize.min.js' %}"></script>
 
         <script type="text/javascript">
+            autosize(document.querySelectorAll('textarea'));
+            
+            // ...
+            // CREATE MDE
+            // ...
+            var simplemde = new SimpleMDE({
+                element: $('.markdown-editor')[0]
+            });
+
+            // ...
+            // SAVE EXPLAIN
+            // ...
             $(document).on('submit', '.form-explain', function(event) {
                 event.preventDefault();
 
@@ -129,7 +149,9 @@
                                     icon: 'success',
                                     title: 'Berhasil Diterbitkan',
                                     text: 'Sedang mengalihkan...',
+                                    showCloseButton: false,
                                     showCancelButton: false,
+                                    showConfirmButton: false,
                                     allowOutsideClick: false,
                                     allowEscapeKey: false,
                                 });

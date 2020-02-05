@@ -63,7 +63,7 @@
 
                 <div class="form-group">
                     <label for="description">Keterangan</label>
-                    <textarea class="form-control" id="description" name="description" rows="3">{% if chapter_obj.draft_description %}{{ chapter_obj.draft_description | safe }}{% endif %}</textarea>
+                    <textarea class="form-control markdown-editor" id="description" name="description" rows="3">{% if chapter_obj.draft_description %}{{ chapter_obj.draft_description | safe }}{% endif %}</textarea>
                 </div>
 
                 <div class="form-group">
@@ -147,15 +147,10 @@
                         <textarea id="description" class="form-control" name="description" rows="3" placeholder="Isi sorotan, ringkas, padat dan jelas"></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label for="changelog">Changelog</label>
-                        <textarea id="changelog" class="form-control" name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
-                    </div>
-
                     <input type="hidden" name="guide" value="{{ chapter_obj.guide.id }}">
 
                     <div class="mt-4 d-flex w-100 border-top pt-4">
-                        <button type="button" class="btn mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-outline-secondary mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
 
                         <button type="submit" class="btn btn-info pl-4 pr-4 ml-auto d-flex align-items-center">
                             <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
@@ -188,15 +183,10 @@
                         <input type="text" id="label" class="form-control" name="label" required>
                     </div>
 
-                    <div class="form-group">
-                        <label for="changelog">Changelog</label>
-                        <textarea id="changelog" class="form-control" name="changelog" rows="3" placeholder="Catatan pembaruan" required></textarea>
-                    </div>
-
                     <input type="hidden" name="chapter">
 
                     <div class="mt-4 d-flex w-100 border-top pt-4">
-                        <button type="button" class="btn mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-outline-secondary mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
 
                         <button type="submit" class="btn btn-info pl-4 pr-4 ml-auto d-flex align-items-center">
                             <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">

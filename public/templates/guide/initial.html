@@ -58,8 +58,11 @@
 
 {% block js %}
     <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
-    
+    <script type="text/javascript" src="{% static 'vendors/scripts/autosize.min.js' %}"></script>
+
     <script type="text/javascript">
+        autosize(document.querySelectorAll('textarea'));
+
         $(document).on('submit', '.form-initial', function(event) {
             event.preventDefault();
 

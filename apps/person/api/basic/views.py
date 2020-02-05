@@ -314,7 +314,7 @@ class PersonApiView(viewsets.ViewSet):
     @transaction.atomic
     @action(methods=['delete'], detail=False,
             permission_classes=[IsAuthenticated],
-            url_path='logout', url_name='perfom_logout')
-    def perfom_logout(self, request):
+            url_path='logout', url_name='perform_logout')
+    def perform_logout(self, request):
         logout(request)
         return Response(status=status.HTTP_200_OK)

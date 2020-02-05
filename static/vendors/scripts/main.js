@@ -25,10 +25,10 @@ function getFormValues($form) {
     $form.find(':input:not(button)').each(function(){
         var input = $(this),
             value = input.val(),
-            name = input.attr('name'),
+            name = input[0]['name'],
             is_required = input.prop('required');
-
-        if (name.indexOf('[]') >= 0) {
+        
+        if (name && name.indexOf('[]') >= 0) {
             var checkboxes = document.getElementsByName(name);
             var vals = "";
             for (var i=0, n=checkboxes.length;i<n;i++) {
