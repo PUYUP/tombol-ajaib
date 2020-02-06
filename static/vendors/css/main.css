@@ -16,6 +16,10 @@ a {
     font-size: 30px;
 }
 
+pre {
+    white-space: pre-wrap;
+}
+
 .main-content {
     padding-top: 68px;
     padding-bottom: 68px;
