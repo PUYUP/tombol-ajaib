@@ -40,7 +40,6 @@ class AbstractGuideRevision(models.Model):
     # Generic relations
     introductions = GenericRelation('beacon.Introduction')
     attachments = GenericRelation('beacon.Attachment')
-    tags = GenericRelation('beacon.Tag')
 
     class Meta:
         abstract = True
@@ -107,6 +106,7 @@ class AbstractChapterRevision(models.Model):
 
     # Generic relations
     introductions = GenericRelation('beacon.Introduction')
+    attachments = GenericRelation('beacon.Attachment')
 
     class Meta:
         abstract = True
@@ -186,7 +186,6 @@ class AbstractExplainRevision(models.Model):
     # Generic relations
     introductions = GenericRelation('beacon.Introduction')
     attachments = GenericRelation('beacon.Attachment')
-    tags = GenericRelation('beacon.Tag')
 
     class Meta:
         abstract = True

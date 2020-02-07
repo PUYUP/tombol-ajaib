@@ -28,6 +28,7 @@ class AbstractGuide(models.Model):
     date_updated = models.DateTimeField(auto_now=True)
 
     # Generic relations
+    tags = GenericRelation('beacon.Tag')
     votes = GenericRelation('beacon.Vote')
     ratings = GenericRelation('beacon.Rating')
 
