@@ -33,7 +33,7 @@ class CategoryGuideListView(View):
             raise Http404()
 
         # ...
-        # GudeRevision objects in Subquery
+        # GuideRevision objects in Subquery
         # ...
         revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
         revision_fields = ('uuid', 'label', 'version', 'status', 'date_updated')

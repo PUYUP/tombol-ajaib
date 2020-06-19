@@ -1,7 +1,6 @@
 from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.cache import never_cache
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -19,7 +18,7 @@ from .serializers import ExplainRevisionSerializer
 # PERMISSIONS
 from apps.beacon.utils.permissions import IsAllowCrudObject
 
-# # PROJECT UTILS
+# PROJECT UTILS
 from utils.generals import get_model, check_uuid
 
 ExplainRevision = get_model('beacon', 'ExplainRevision')

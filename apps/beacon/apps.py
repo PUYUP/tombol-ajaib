@@ -10,7 +10,9 @@ class BeaconConfig(AppConfig):
         from apps.beacon.signals import (
             guide_handler,
             chapter_handler,
-            explain_handler)
+            explain_handler,
+            topic_handler,
+            reply_handler)
 
         # Guide
         Guide = get_model('beacon', 'Guide')
@@ -26,3 +28,13 @@ class BeaconConfig(AppConfig):
         Explain = get_model('beacon', 'Explain')
         post_save.connect(
             explain_handler, sender=Explain, dispatch_uid='explain_signal')
+
+        # Topic
+        Topic = get_model('beacon', 'Topic')
+        post_save.connect(
+            topic_handler, sender=Topic, dispatch_uid='topic_signal')
+
+        # Reply
+        Reply = get_model('beacon', 'Reply')
+        post_save.connect(
+            reply_handler, sender=Reply, dispatch_uid='reply_signal')

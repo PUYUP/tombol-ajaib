@@ -1,7 +1,7 @@
 from django.views import View
 from django.db.models import (
     Count, OuterRef, Subquery, Case, When, F, Prefetch,
-    CharField, IntegerField, Value, Q, Sum)
+    CharField, IntegerField, Value, Q, Sum, Exists)
 from django.http import Http404
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
@@ -20,6 +20,7 @@ from apps.beacon.utils.constant import (
 Category = get_model('beacon', 'Category')
 Guide = get_model('beacon', 'Guide')
 GuideRevision = get_model('beacon', 'GuideRevision')
+EnrollmentGuide = get_model('beacon', 'EnrollmentGuide')
 Introduction = get_model('beacon', 'Introduction')
 Chapter = get_model('beacon', 'Chapter')
 ChapterRevision = get_model('beacon', 'ChapterRevision')
@@ -37,7 +38,7 @@ class GuideListView(View):
         revision_fields = ('uuid', 'label', 'date_updated', 'version', 'status')
         revision_params = dict()
         person = request.person
-        revisions = GuideRevision.objects.filter(guide__pk=OuterRef('pk'))
+        revisions = GuideRevision.objects.filter(guide_id=OuterRef('pk'))
 
         for item in revision_fields:
             revision_params['revision_%s' % item] = Case(
@@ -71,7 +72,7 @@ class GuideDetailView(View):
             raise Http404(_("Guide UUID invalid."))
 
         # ...
-        # GudeRevision objects in Subquery
+        # GuideRevision objects in Subquery
         # ...
         revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
         revision_fields = ('id', 'uuid', 'label', 'version', 'status',
@@ -91,6 +92,12 @@ class GuideDetailView(View):
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
         # ...
+        # Enrollment query
+        # ...
+        enrollment_guide_obj = EnrollmentGuide.objects \
+            .filter(guide_id=OuterRef('id'), creator_id=person_pk)
+
+        # ...
         # Run query
         # ...
         try:
@@ -102,6 +109,7 @@ class GuideDetailView(View):
                     num_revision=Count('guide_revisions', distinct=True),
                     num_explain=Count('explains', distinct=True),
                     num_chapter=Count('chapters', distinct=True),
+                    enrollment_guide_uuid=Subquery(enrollment_guide_obj.values('uuid')[:1]),
                     **draft_fields,
                     **published_fields) \
                 .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
@@ -154,7 +162,7 @@ class GuideSortingView(View):
             raise Http404(_("Guide UUID invalid."))
 
         # ...
-        # GudeRevision objects in Subquery
+        # GuideRevision objects in Subquery
         # ...
         revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
         revision_fields = ('id', 'uuid', 'label', 'version', 'status',

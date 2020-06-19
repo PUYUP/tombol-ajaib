@@ -17,13 +17,237 @@
             {% endif %}
         </div> <!-- /.docs-content -->
 
-        <div class="docs-tools">
+        <div class="docs-tools pl-4">
+            {% if guide_obj.enrollment_guide_uuid %}
+                <div class="alert alert-secondary">
+                    <p>Kirim topik terkait Panduan ini. Blok teks untuk mengutip isi Panduan.</p>
+                    <button type="button" class="btn btn-secondary pl-4 pr-4 btn-block" data-toggle="modal" data-target="#modalAddQuestion">Tanya</button>
+                    
+                    <span class="help-text d-block mt-2 small text-muted">
+                        <a href="{% url 'guide_topic_list' guide_obj.uuid %}">Lihat 2.451 topik</a>
+                    </span>
+                </div>
+            {% else %}
+                <div class="alert alert-secondary">
+                    <p>Jika merasa bingung silahkan Enroll Panduan ini untuk mengirim Topik berisi pertanyaan.</p>
+                    <button type="button" id="enrollnow" class="btn btn-secondary pl-4 pr-4 btn-block"
+                        data-pk="{{ guide_obj.id }}" data-uuid="{{ guide_obj.uuid }}" data-type="guide">Enroll</button>
+                    <span class="help-text d-block mt-2 small text-muted">Tergabung 7.3901 pengguna</span>
+                </div>
+            {% endif %}
         </div> <!-- /.sidebar -->
     </div> <!-- /.main content -->
+
+    <!-- Modal Add Question -->
+    {% if guide_obj.enrollment_guide_uuid %}
+        <div class="modal fade" id="modalAddQuestion" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form class="modal-content form-question" novalidate>
+                    <div class="modal-header">
+                        <h5 class="modal-title">Kirim Topik</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="label">Judul</label>
+                            <input type="text" id="label" class="form-control" name="label" required>
+                        </div>
+
+                        <div class="alert alert-warning mb-0">
+                            Isi topik berikan dilaman berikutnya. Pastikan judul pertanyaan sudah tepat.
+                        </div>
+
+                        <input type="hidden" name="enrollment_uuid" value="{{ guide_obj.enrollment_guide_uuid }}">
+                        <input type="hidden" name="enrollment_type" value="guide">
+                    </div>
+
+                    <div class="modal-footer">
+                        <div class="d-flex w-100">
+                            <button type="button" class="btn btn-outline-secondary mr-auto pl-4 pr-4" data-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-info pl-4 pr-4">
+                                <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+
+                                Kirim
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block css %}
+    {% if guide_obj.enrollment_guide_uuid %}
+        <link rel="stylesheet" type="text/css" href="{% static 'vendors/simplemde/simplemde.min.css' %}">
+    {% endif %}
 {% endblock %}
 
 {% block js %}
     <script type="text/javascript" src="{% static 'vendors/scripts/chapter-list.js' %}"></script>
+    <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
+
+    {% if guide_obj.enrollment_guide_uuid %}
+        <script type="text/javascript">
+            // ...
+            // SUBMIT QUESTION
+            // ...
+            $(document).on('submit', '.form-question', function(event) {
+                event.preventDefault();
+
+                var formValuesObj = getFormValues($(this));
+                var saveValuesObj = {};
+
+                $.each(formValuesObj, function(i, v) {
+                    if (i) saveValuesObj[i] = v.value;
+                });
+                
+                var $form = $(this).closest('.modal');
+
+                $form.find('button').prop('disabled', true);
+                $form.find('button').find('.spinner').removeClass('d-none');
+
+                questionHandler($form, saveValuesObj);
+            });
+
+            // ...
+            // QUESTION HANDLER
+            // ...
+            function questionHandler($form=null, $data=null) {
+                $.ajax({
+                    method: 'POST',
+                    url: '/api/beacon/topics/',
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$data
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Menyiapkan editor...',
+                            showCloseButton: false,
+                            showCancelButton: false,
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                        });
+
+                        window.location.href = response.permalink;
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    },
+                    complete: function(xhr, status) {
+                        $form.find('button').prop('disabled', false);
+                        $form.find('button').find('.spinner').addClass('d-none');
+                    }
+                });
+            }
+        </script>
+    {% else %}
+        <script type="text/javascript">
+            // ...
+            // ENROLL!
+            // ...
+            $(document).on('click', '#enrollnow', function(event) {
+                var uuid = $(this).data('uuid'),
+                    pk = $(this).data('pk'),
+                    enrollment_type = $(this).data('type');
+
+                var data = {
+                    'uuid': uuid,
+                    'guide': pk,
+                    'enrollment_type': enrollment_type
+                }
+
+                enrollHandler(data);
+            });
+
+            function enrollHandler($data={}) {
+                $.ajax({
+                    method: 'POST',
+                    url: '/api/beacon/guides-enrollments/',
+                    headers: {'X-CSRFToken': Cookies.get('csrftoken')},
+                    xhrFields: {withCredentials: true},
+                    data: {
+                        ...$data,
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Sedang menyegarkan...',
+                            showCloseButton: false,
+                            showCancelButton: false,
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                        });
+                        
+                        window.location.reload();
+                    },
+                    error: function(error) {
+                        if (error && error.responseJSON) {
+                            var errorJSON = error.responseJSON,
+                                errorMessage = [];
+
+                            $.each(errorJSON, function(index, item) {
+                                var label = '<span class="text-capitalize font-weight-bold text-danger">' + index + '</span>: ';
+                                
+                                if (Array.isArray(item)) {
+                                    errorMessage.push(label + item.join(' '));
+                                } else {
+                                    errorMessage.push(label + item);
+                                }
+                            });
+
+                            if (errorMessage.length == 0) errorMessage.push('Terjadi kesalahan. Coba lagi.');
+
+                            // Show error
+                            if (errorMessage) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    html: '<div class="text-center">' + errorMessage.join('<br /><br />') + '</div>',
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        </script>
+    {% endif %}
 
     <script type="text/javascript">
         loadChapter('{{ guide_obj.uuid }}', '', '{{ user.person.uuid }}');
@@ -32,12 +256,11 @@
     {% if guide_obj.creator.id == person_pk %}
         <script type="text/javascript" src="{% static 'vendors/scripts/chapter-add.js' %}"></script>
         <script type="text/javascript" src="{% static 'vendors/scripts/explain-add.js' %}"></script>
-        <script type="text/javascript" src="{% static 'vendors/sweetalert2/dist/sweetalert2.all.min.js' %}"></script>
         <script type="text/javascript" src="{% static 'vendors/scripts/autosize.min.js' %}"></script>
 
         <script type="text/javascript">
             autosize(document.querySelectorAll('textarea'));
-            
+
             // ...
             // UPDATE Guide
             // ...

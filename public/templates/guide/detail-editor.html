@@ -89,6 +89,8 @@
                     <button type="button" id="add-introduction" class="btn btn-outline-secondary btn-sm pl-4 pr-4">Tambah</button>
                 </div>
                 
+                <input type="hidden" name="guide_uuid" value="{{ guide_obj.uuid }}">
+
                 <div class="d-flex w-100 border-top pt-4">
                     <button type="submit" class="btn btn-warning pl-4 pr-4 mr-auto save-guide" data-status="{{ DRAFT }}">
                         <div class="spinner spinner-border spinner-border-sm mr-2 d-none" role="status">
@@ -144,7 +146,7 @@
     </div> <!-- /.published -->
 </div> <!-- /.tab content -->
 
-<div class="modal fade" id="modalAddChapter" role="dialog" aria-hidden="true">
+<div class="modal fade" id="modalAddChapter" data-backdrop="static" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">

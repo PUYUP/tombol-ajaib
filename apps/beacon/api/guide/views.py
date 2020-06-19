@@ -21,7 +21,7 @@ from .serializers import GuideSerializer, GuideListSerializer
 # PERMISSIONS
 from apps.beacon.utils.permissions import IsAllowCrudObject
 
-# # PROJECT UTILS
+# PROJECT UTILS
 from utils.generals import get_model, check_uuid
 
 # LOCAL UTILS
@@ -61,32 +61,12 @@ class GuideApiView(viewsets.ViewSet):
             # action is not set return default permission_classes
             return [permission() for permission in self.permission_classes]
 
-    # Return a response
-    def get_response(self, serializer, serializer_parent=None, *args, **kwargs):
-        """ Output to endpoint """
-        response = dict()
-        limit = kwargs.get('limit', None)
-
-        if serializer.data and limit:
-            response['count'] = int(limit)
-
-        if not limit:
-            if serializer_parent is not None:
-                response['media'] = serializer_parent.data
-
-            response['count'] = PAGINATOR.page.paginator.count
-            response['navigate'] = {
-                'previous': PAGINATOR.get_previous_link(),
-                'next': PAGINATOR.get_next_link()
-            }
-        response['results'] = serializer.data
-        return Response(response, status=response_status.HTTP_200_OK)
 
     def get_object(self, request, uuid=None, extend_fields=list()):
         person_pk = request.person_pk
 
         # ...
-        # GudeRevision objects in Subquery
+        # GuideRevision objects in Subquery
         # ...
         revision_objs = GuideRevision.objects.filter(guide_id=OuterRef('id'))
         revision_fields = ['uuid', 'label', 'version', 'status', 'date_created']
@@ -122,6 +102,9 @@ class GuideApiView(viewsets.ViewSet):
                 **published_fields) \
             .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED))
 
+        # ...
+        # Single object
+        # ...
         if uuid:
             try:
                 queryset = queryset.filter(uuid=uuid).get()
@@ -137,11 +120,10 @@ class GuideApiView(viewsets.ViewSet):
         # Person UUID defined
         if person_uuid:
             person_uuid = check_uuid(uid=person_uuid)
-
             if not person_uuid:
                 raise NotAcceptable(detail=_("Person UUID invalid."))
 
-        # Get object...
+        # Get objects...
         queryset = self.get_object(request)
 
         if person_uuid:

@@ -1,0 +1,69 @@
+{% extends 'templates/base.html' %}
+{% load static %}
+
+{% block head %}
+    <title>{{ title }}</title>
+{% endblock %}
+
+{% block content %}
+    <div class="container main-content">
+        <div class="row justify-content-center pt-4">
+            <div class="col-12 col-sm-12 col-md-10 col-lg-8 col-xl-7">
+                <h1 class="mb-3">
+                    Topik Terkait: {{ enrolled_obj.published_label }}
+                    {{ enrolled_obj.uuid }}
+                </h1>
+        
+                <ul class="list-unstyled">
+                    {% for item in topic_objs %}
+                        <li class="media mb-2">
+                            <div class="media-body">
+                                <div class="d-block">
+                                    <a class="header" href="{% url 'guide_topic_detail' enrolled_obj.uuid item.uuid %}">
+                                        <strong>
+                                            {% if item.published_label %}
+                                                {{ item.published_label | safe }}
+                                            {% elif item.draft_label %}
+                                                {{ item.draft_label | safe }}
+                                            {% else %}
+                                                {{ item.label | safe }}
+                                            {% endif %}
+                                        </strong>
+                                    </a>
+                                </div>
+
+                                <div class="text-muted">
+                                    <span class="item">
+                                        Rev.
+                                        {% if item.published_version %}
+                                            {{ item.published_version }}
+                                        {% elif item.draft_version %}
+                                            {{ item.draft_version }}
+                                        {% else %}
+                                            {{ item.version }}
+                                        {% endif %}
+                                    </span>
+
+                                    <span class="item ml-2">
+                                        diperbarui
+                                        {% if item.published_date_updated %}
+                                            {{ item.published_date_updated }}
+                                        {% elif item.draft_date_updated %}
+                                            {{ item.draft_date_updated }}
+                                        {% else %}
+                                            {{ item.date_updated }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div> <!-- /.col -->
+        </div> <!-- /.row -->
+    </div> <!-- /.container -->
+{% endblock %}
+
+{% block js %}
+
+{% endblock %}

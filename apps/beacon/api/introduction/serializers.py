@@ -40,14 +40,16 @@ class IntroductionSerializer(serializers.ModelSerializer):
 
         if object_id and model_name:
             # mutable data
-            _mutable = data._mutable
-            kwargs['data']._mutable = True
+            _mutable = getattr(data, '_mutable', None)
+            if _mutable:
+                kwargs['data']._mutable = True
 
             content_type = ContentType.objects.get(app_label='beacon', model=model_name)
             kwargs['data']['content_type'] = content_type.pk
 
             # set mutable flag back
-            kwargs['data']._mutable = _mutable
+            if _mutable:
+                kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
 
     @transaction.atomic

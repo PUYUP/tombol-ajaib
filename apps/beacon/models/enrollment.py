@@ -14,15 +14,15 @@ from apps.beacon.utils.constant import (
 
 
 # 0
-class AbstractGuideEnrollment(models.Model):
+class AbstractEnrollmentGuide(models.Model):
     creator = models.ForeignKey(
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
-        related_name='guide_enrollments')
+        related_name='enrollment_guides')
     guide = models.ForeignKey(
         'beacon.Guide',
         on_delete=models.CASCADE,
-        related_name='guide_enrollments')
+        related_name='enrollment_guides')
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -31,31 +31,31 @@ class AbstractGuideEnrollment(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
-        verbose_name = _("Guide Enrollment")
-        verbose_name_plural = _("Guide Enrollments")
+        verbose_name = _("Enrollment Guide")
+        verbose_name_plural = _("Enrollment Guides")
 
     def __str__(self):
         return self.guide.label
 
 
 # 1
-class AbstractChapterEnrollment(models.Model):
+class AbstractEnrollmentChapter(models.Model):
     creator = models.ForeignKey(
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
-        related_name='chapter_enrollments')
-    enrollment = models.ForeignKey(
-        'beacon.GuideEnrollment',
+        related_name='enrollment_chapters')
+    enrollment_guide = models.ForeignKey(
+        'beacon.EnrollmentGuide',
         on_delete=models.CASCADE,
-        related_name='chapter_enrollments')
+        related_name='enrollment_chapters')
     guide = models.ForeignKey(
         'beacon.Guide',
         on_delete=models.CASCADE,
-        related_name='chapter_enrollments')
+        related_name='enrollment_chapters')
     chapter = models.ForeignKey(
         'beacon.Chapter',
         on_delete=models.CASCADE,
-        related_name='chapter_enrollments')
+        related_name='enrollment_chapters')
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -64,35 +64,39 @@ class AbstractChapterEnrollment(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
-        verbose_name = _("Chapter Enrollment")
-        verbose_name_plural = _("Chapter Enrollments")
+        verbose_name = _("Enrollment Chapter")
+        verbose_name_plural = _("Enrollment Chapters")
 
     def __str__(self):
         return self.chapter.label
 
+    def save(self, *args, **kwargs):
+        self.guide = self.enrollment_guide.guide
+        super().save(*args, **kwargs)
+
 
 # 2
-class AbstractExplainEnrollment(models.Model):
+class AbstractEnrollmentExplain(models.Model):
     creator = models.ForeignKey(
         'person.Person', null=True, blank=True,
         on_delete=models.SET_NULL,
-        related_name='explain_enrollments')
-    enrollment = models.ForeignKey(
-        'beacon.GuideEnrollment',
+        related_name='enrollment_explains')
+    enrollment_guide = models.ForeignKey(
+        'beacon.EnrollmentGuide',
         on_delete=models.CASCADE,
-        related_name='explain_enrollments')
+        related_name='enrollment_explains')
     guide = models.ForeignKey(
         'beacon.Guide',
         on_delete=models.CASCADE,
-        related_name='explain_enrollments')
+        related_name='enrollment_explains')
     chapter = models.ForeignKey(
         'beacon.Chapter',
         on_delete=models.CASCADE,
-        related_name='explain_enrollments')
+        related_name='enrollment_explains')
     explain = models.ForeignKey(
         'beacon.Explain',
         on_delete=models.CASCADE,
-        related_name='explain_enrollments')
+        related_name='enrollment_explains')
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -103,8 +107,13 @@ class AbstractExplainEnrollment(models.Model):
     class Meta:
         abstract = True
         app_label = 'beacon'
-        verbose_name = _("Explain Enrollment")
-        verbose_name_plural = _("Explain Enrollments")
+        verbose_name = _("Enrollment Explain")
+        verbose_name_plural = _("Enrollment Explains")
 
     def __str__(self):
         return self.explain.label
+
+    def save(self, *args, **kwargs):
+        self.guide = self.enrollment_guide.guide
+        self.chapter = self.explain.chapter
+        super().save(*args, **kwargs)

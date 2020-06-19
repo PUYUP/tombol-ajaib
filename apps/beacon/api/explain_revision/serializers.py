@@ -52,8 +52,9 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
         """
         if explain_uuid:
             # mutable data
-            _mutable = data._mutable
-            kwargs['data']._mutable = True
+            _mutable = getattr(data, '_mutable', None)
+            if _mutable:
+                kwargs['data']._mutable = True
 
             # get last DRAFT or PUBLISHED
             revision_obj = ExplainRevision.objects \
@@ -72,7 +73,8 @@ class ExplainRevisionSerializer(serializers.ModelSerializer):
             kwargs['context'] = context
 
             # set mutable flag back
-            kwargs['data']._mutable = _mutable
+            if _mutable:
+                kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
 
     def get_permalink(self, obj):

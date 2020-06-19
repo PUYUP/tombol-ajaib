@@ -1,7 +1,6 @@
 from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.cache import never_cache
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -14,12 +13,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, NotAcceptable, ValidationError
 
 # SERIALIZERS
-from .serializers import  IntroductionSerializer
+from .serializers import IntroductionSerializer
 
 # PERMISSIONS
 from apps.beacon.utils.permissions import IsAllowCrudObject
 
-# # PROJECT UTILS
+# PROJECT UTILS
 from utils.generals import get_model, check_uuid
 
 Introduction = get_model('beacon', 'Introduction')

@@ -20,6 +20,8 @@ Chapter = get_model('beacon', 'Chapter')
 ChapterRevision = get_model('beacon', 'ChapterRevision')
 Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
+EnrollmentChapter = get_model('beacon', 'EnrollmentChapter')
+EnrollmentGuide = get_model('beacon', 'EnrollmentGuide')
 
 
 class ChapterDetailView(View):
@@ -55,6 +57,18 @@ class ChapterDetailView(View):
             published_fields['published_%s' % item] = Subquery(
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
+        # ...
+        # Enrollment Guide
+        # ...
+        enrollment_guide_obj = EnrollmentGuide.objects \
+            .filter(guide_id=OuterRef('guide_id'), creator_id=person_pk)
+
+        # ...
+        # Enrollment Chapter
+        # ...
+        enrollment_chapter_obj = EnrollmentChapter.objects \
+            .filter(chapter_id=OuterRef('id'), creator_id=person_pk)
+
         try:
             queryset = Chapter.objects \
                 .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide'),
@@ -62,12 +76,22 @@ class ChapterDetailView(View):
                 .select_related('creator', 'creator__user', 'guide', 'guide__category') \
                 .filter(uuid=chapter_uuid) \
                 .annotate(
+                    enrollment_guide_id=Subquery(enrollment_guide_obj.values('id')[:1]),
+                    enrollment_chapter_id=Subquery(enrollment_chapter_obj.values('id')[:1]),
                     **draft_fields,
                     **published_fields) \
                 .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Tidak ditemukan."))
+
+        # Enroll!
+        if queryset.enrollment_guide_id:
+            # Enroll Chapter
+            if not queryset.enrollment_chapter_id:
+                queryset.enrollment_chapters \
+                    .get_or_create(
+                        creator_id=person_pk, enrollment_guide_id=queryset.enrollment_guide_id)
 
         # Create title
         title = queryset.draft_label

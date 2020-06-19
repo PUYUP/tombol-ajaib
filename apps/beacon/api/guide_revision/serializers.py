@@ -45,14 +45,13 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
         # Validate uuid
         guide_uuid = check_uuid(uid=guide_uuid)
 
-        """
-        With this we create a new Revision
-        The data based on last PUBLISHED or DRAFT previous revisions
-        """
+        # With this we create a new Revision
+        # The data based on last PUBLISHED or DRAFT previous revisions
         if guide_uuid:
             # mutable data
-            _mutable = data._mutable
-            kwargs['data']._mutable = True
+            _mutable = getattr(data, '_mutable', None)
+            if not _mutable:
+                kwargs['data']._mutable = True
 
             # get last DRAFT or PUBLISHED
             revision_obj = GuideRevision.objects \
@@ -72,8 +71,54 @@ class GuideRevisionSerializer(serializers.ModelSerializer):
             kwargs['context'] = context
 
             # set mutable flag back
-            kwargs['data']._mutable = _mutable
+            if not _mutable:
+                kwargs['data']._mutable = _mutable
         super().__init__(*args, **kwargs)
+
+    """
+    def to_internal_value(self, data):
+        context = self.context
+
+        request = context.get('request', None)
+        if not request:
+            raise NotAcceptable(detail=_("Request not define."))
+
+        # With this we create a new Revision
+        # The data based on last PUBLISHED or DRAFT previous revisions
+        person_pk = request.person_pk
+        guide_uuid = data.get('guide_uuid', None)
+        guide_uuid = check_uuid(uid=guide_uuid)
+
+        if not guide_uuid:
+            raise NotAcceptable(detail=_("Guide UUID invalid."))
+
+        # get last DRAFT or PUBLISHED
+        revision_obj = GuideRevision.objects \
+            .filter(
+                Q(creator_id=person_pk), Q(guide__uuid=guide_uuid),
+                Q(status=DRAFT) | Q(status=PUBLISHED)).first()
+
+        # un-mutable data
+        print(data.copy())
+        _mutable = getattr(data, '_mutable', None)
+        if not _mutable:
+            data._mutable = True
+
+        # Prepare new DRAFT data
+        if revision_obj:
+            data['guide'] = revision_obj.guide_id
+            data['label'] = revision_obj.label
+            data['description'] = revision_obj.description
+            data['changelog'] = revision_obj.changelog
+            data['status'] = DRAFT
+
+            self.context['instance'] = revision_obj
+
+        # set mutable back
+        if not _mutable:
+            data._mutable = _mutable
+        return super().to_internal_value(data)
+    """
 
     def get_permalink(self, obj):
         return reverse('chapter_detail', kwargs={'chapter_uuid': obj.uuid})

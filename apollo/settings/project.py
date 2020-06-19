@@ -111,6 +111,11 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=365),
 }
 
+# Login Backend
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/3.0/topics/auth/customizing/
+AUTHENTICATION_BACKENDS = ['apps.person.utils.auths.LoginBackend']
+
 
 # Django Debug Toolbar
 # ------------------------------------------------------------------------------

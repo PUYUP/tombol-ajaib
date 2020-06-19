@@ -24,6 +24,12 @@ class HomeView(View):
                 guide_count=Count('pk', filter=Q(guides__guide_revisions__status=PUBLISHED))) \
             .all()
 
+        obj = GuideRevision.objects.get(id=504)
+        # obj.pk = None
+        # obj.save()
+
+        print(obj.introductions.all())
+
         self.context['title'] = _("Beranda")
         self.context['category_objs'] = category_objs
         return render(request, self.template_name, self.context)

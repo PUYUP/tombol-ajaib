@@ -10,3 +10,6 @@ class GuideRevisionManager(models.Manager):
         x = self.revisions.get(status=PUBLISHED)
         print(x)
         return 'AAAAA'
+
+    def create_revision(self):
+        print('OO')

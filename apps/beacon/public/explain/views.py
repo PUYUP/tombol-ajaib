@@ -3,7 +3,7 @@ import markdown
 from django.views import View
 from django.db.models import (
     Count, OuterRef, Subquery, Case, When, F, Prefetch,
-    CharField, Value, Q)
+    CharField, Value, Q, Exists)
 from django.http import Http404
 from django.utils.decorators import method_decorator
 from django.shortcuts import render
@@ -20,6 +20,9 @@ from apps.beacon.utils.constant import (
 
 Explain = get_model('beacon', 'Explain')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
+EnrollmentExplain = get_model('beacon', 'EnrollmentExplain')
+EnrollmentChapter = get_model('beacon', 'EnrollmentChapter')
+EnrollmentGuide = get_model('beacon', 'EnrollmentGuide')
 Content = get_model('beacon', 'Content')
 
 
@@ -87,6 +90,24 @@ class ExplainDetailView(View):
             published_fields['published_%s' % item] = Subquery(
                 revision_objs.filter(status=PUBLISHED).values(item)[:1])
 
+        # ...
+        # Enrollment Guide
+        # ...
+        enrollment_guide_obj = EnrollmentGuide.objects \
+            .filter(guide_id=OuterRef('guide_id'), creator_id=person_pk)
+
+        # ...
+        # Enrollment Chapter
+        # ...
+        enrollment_chapter_obj = EnrollmentChapter.objects \
+            .filter(chapter_id=OuterRef('chapter_id'), creator_id=person_pk)
+
+        # ...
+        # Enrollment Explain
+        # ...
+        enrollment_explain_obj = EnrollmentExplain.objects \
+            .filter(explain_id=OuterRef('id'), creator_id=person_pk)
+
         try:
             queryset = Explain.objects \
                 .prefetch_related(Prefetch('creator'), Prefetch('creator__user'), Prefetch('guide'),
@@ -94,13 +115,30 @@ class ExplainDetailView(View):
                 .select_related('creator', 'creator__user', 'guide', 'guide__category') \
                 .filter(uuid=explain_uuid) \
                 .annotate(
+                    enrollment_guide_id=Subquery(enrollment_guide_obj.values('id')[:1]),
+                    enrollment_chapter_id=Subquery(enrollment_chapter_obj.values('id')[:1]),
+                    enrollment_explain_id=Subquery(enrollment_explain_obj.values('id')[:1]),
                     **draft_fields,
                     **published_fields) \
                 .exclude(~Q(creator_id=person_pk), ~Q(published_status=PUBLISHED)) \
                 .get()
         except ObjectDoesNotExist:
             raise Http404(_("Tidak ditemukan."))
-        
+
+        # Enroll!
+        if queryset.enrollment_guide_id:
+            # Enroll Chapter
+            if not queryset.enrollment_chapter_id:
+                queryset.chapter.enrollment_chapters \
+                    .get_or_create(
+                        creator_id=person_pk, enrollment_guide_id=queryset.enrollment_guide_id)
+
+            # Enroll Explain
+            if not queryset.enrollment_explain_id:
+                queryset.enrollment_explains \
+                    .get_or_create(
+                        creator_id=person_pk, enrollment_guide_id=queryset.enrollment_guide_id)
+
         # Create title
         title = queryset.draft_label
         if queryset.published_label:

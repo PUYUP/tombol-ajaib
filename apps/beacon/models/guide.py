@@ -5,11 +5,12 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.text import slugify
 from django.contrib.contenttypes.fields import GenericRelation
 
+# PROJECT UTILS
+from utils.generals import get_model
+
 # LOCAL UTILS
 from apps.beacon.utils.constant import (
     DRAFT, STATUS_CHOICES, PUBLISHED, TYPE_CHOICES, PUBLIC)
-
-from .managers import GuideRevisionManager
 
 
 # 0
@@ -32,8 +33,6 @@ class AbstractGuide(models.Model):
     votes = GenericRelation('beacon.Vote')
     ratings = GenericRelation('beacon.Rating')
 
-    objects = GuideRevisionManager()
-
     class Meta:
         abstract = True
         app_label = 'beacon'
@@ -44,18 +43,17 @@ class AbstractGuide(models.Model):
     def __str__(self):
         return self.label
 
-    def save(self, *args, **kwargs):
-        # Auto create slug from label
-        if self.label:
-            self.slug = slugify(self.label)
+    def create_revision(self):
+        description = None
+        request = getattr(self, 'request', None)
 
-        super().save(*args, **kwargs)
+        if request and hasattr(request, 'data'):
+            description = request.data.get('description', None)
 
-    def published(self):
-        return self.guide_revisions.get(status=PUBLISHED)
-
-    def draft(self):
-        return self.guide_revisions.get(status=DRAFT)
+        self.guide_revisions.model.objects.create(
+            guide=self, creator=self.creator, version=1,
+            label=self.label, description=description,
+            status=DRAFT, changelog=_("Initial"))
 
 
 # 1
@@ -86,12 +84,19 @@ class AbstractChapter(models.Model):
     def __str__(self):
         return self.label
 
-    def save(self, *args, **kwargs):
-        # Auto create slug from label
-        if self.label:
-            self.slug = slugify(self.label)
+    def create_revision(self):
+        status = DRAFT
+        description = None
 
-        super().save(*args, **kwargs)
+        request = getattr(self, 'request', None)
+        if request and hasattr(request, 'data'):
+            status = request.data.get('status', DRAFT)
+            description = request.data.get('description', None)
+
+        self.chapter_revisions.model.objects.create(
+            chapter=self, creator=self.creator, version=1,
+            label=self.label, description=description,
+            status=status, changelog=_("Initial"))
 
 
 # 2
@@ -133,36 +138,19 @@ class AbstractExplain(models.Model):
     def __str__(self):
         return self.label
 
+    def create_revision(self):
+        # Create blob content
+        Content = get_model('beacon', 'Content')
+        content = Content.objects.create(creator=self.creator)
+
+        self.explain_revisions.model.objects.create(
+            explain=self, creator=self.creator, version=1,
+            label=self.label, status=DRAFT,
+            changelog=_("Initial"), content=content)
+
     def save(self, *args, **kwargs):
-        guide_from_chapter = self.chapter.guide
-        self.guide = guide_from_chapter
-
+        self.guide = self.chapter.guide
         super().save(*args, **kwargs)
-
-    def get_latest_revision(self):
-        revision = self.revisions.filter(status=PUBLISHED) \
-            .order_by('-date_created')
-
-        if revision.exists():
-            return revision.last()
-        return None
-
-    def get_latest_content(self):
-        revision = self.get_latest_revision()
-        content = getattr(revision, 'content', None)
-
-        if revision and content:
-            blob = getattr(content, 'blob', None)
-            if blob and type(blob) is bytes:
-                return blob.decode('utf-8')
-            return blob
-        return None
-
-    def get_latest_label(self):
-        revision = self.get_latest_revision()
-        if revision:
-            return revision.label
-        return self.label
 
 
 # 3

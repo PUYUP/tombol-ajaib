@@ -1,6 +1,6 @@
-from .models_abstract import *
-from .models_attribute import *
-from .models_validation import *
+from .person import *
+from .attribute import *
+from .validation import *
 
 # PROJECT UTILS
 from utils.generals import is_model_registered

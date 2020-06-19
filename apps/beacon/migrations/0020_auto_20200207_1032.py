@@ -97,14 +97,14 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='GuideEnrollment',
+            name='EnrollmentGuide',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('uuid', models.UUIDField(default=uuid.uuid4, editable=False)),
                 ('date_created', models.DateTimeField(auto_now_add=True)),
                 ('date_updated', models.DateTimeField(auto_now=True)),
-                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='guide_enrollments', to='person.Person')),
-                ('guide', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='guide_enrollments', to='beacon.Guide')),
+                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enrollment_guides', to='person.Person')),
+                ('guide', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_guides', to='beacon.Guide')),
             ],
             options={
                 'verbose_name': 'Guide Enrollment',
@@ -114,7 +114,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='ExplainEnrollment',
+            name='EnrollmentExplain',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('uuid', models.UUIDField(default=uuid.uuid4, editable=False)),
@@ -122,11 +122,11 @@ class Migration(migrations.Migration):
                 ('date_updated', models.DateTimeField(auto_now=True)),
                 ('date_begin', models.DateTimeField(auto_now_add=True)),
                 ('date_completed', models.DateTimeField(auto_now=True)),
-                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='explain_enrollments', to='beacon.Chapter')),
-                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='explain_enrollments', to='person.Person')),
-                ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='explain_enrollments', to='beacon.GuideEnrollment')),
-                ('explain', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='explain_enrollments', to='beacon.Explain')),
-                ('guide', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='explain_enrollments', to='beacon.Guide')),
+                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_explains', to='beacon.Chapter')),
+                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enrollment_explains', to='person.Person')),
+                ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_explains', to='beacon.EnrollmentGuide')),
+                ('explain', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_explains', to='beacon.Explain')),
+                ('guide', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_explains', to='beacon.Guide')),
             ],
             options={
                 'verbose_name': 'Explain Enrollment',
@@ -136,16 +136,16 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='ChapterEnrollment',
+            name='EnrollmentChapter',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('uuid', models.UUIDField(default=uuid.uuid4, editable=False)),
                 ('date_created', models.DateTimeField(auto_now_add=True)),
                 ('date_updated', models.DateTimeField(auto_now=True)),
-                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chapter_enrollments', to='beacon.Chapter')),
-                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='chapter_enrollments', to='person.Person')),
-                ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chapter_enrollments', to='beacon.GuideEnrollment')),
-                ('guide', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chapter_enrollments', to='beacon.Guide')),
+                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_chapters', to='beacon.Chapter')),
+                ('creator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enrollment_chapters', to='person.Person')),
+                ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_chapters', to='beacon.EnrollmentGuide')),
+                ('guide', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollment_chapters', to='beacon.Guide')),
             ],
             options={
                 'verbose_name': 'Chapter Enrollment',

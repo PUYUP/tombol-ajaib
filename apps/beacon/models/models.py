@@ -1,5 +1,5 @@
 from .general import *
-from .abstract import *
+from .guide import *
 from .revision import *
 from .enrollment import *
 from .discussion import *
@@ -145,45 +145,63 @@ if not is_model_registered('beacon', 'SheetRevision'):
 
 
 # 16
-if not is_model_registered('beacon', 'GuideEnrollment'):
-    class GuideEnrollment(AbstractGuideEnrollment):
-        class Meta(AbstractGuideEnrollment.Meta):
+if not is_model_registered('beacon', 'EnrollmentGuide'):
+    class EnrollmentGuide(AbstractEnrollmentGuide):
+        class Meta(AbstractEnrollmentGuide.Meta):
             db_table = 'beacon_enrollment_guide'
 
-    __all__.append('GuideEnrollment')
+    __all__.append('EnrollmentGuide')
 
 
 # 17
-if not is_model_registered('beacon', 'ChapterEnrollment'):
-    class ChapterEnrollment(AbstractChapterEnrollment):
-        class Meta(AbstractChapterEnrollment.Meta):
+if not is_model_registered('beacon', 'EnrollmentChapter'):
+    class EnrollmentChapter(AbstractEnrollmentChapter):
+        class Meta(AbstractEnrollmentChapter.Meta):
             db_table = 'beacon_enrollment_chapter'
 
-    __all__.append('ChapterEnrollment')
+    __all__.append('EnrollmentChapter')
 
 
 # 18
-if not is_model_registered('beacon', 'ExplainEnrollment'):
-    class ExplainEnrollment(AbstractExplainEnrollment):
-        class Meta(AbstractExplainEnrollment.Meta):
+if not is_model_registered('beacon', 'EnrollmentExplain'):
+    class EnrollmentExplain(AbstractEnrollmentExplain):
+        class Meta(AbstractEnrollmentExplain.Meta):
             db_table = 'beacon_enrollment_explain'
 
-    __all__.append('ExplainEnrollment')
+    __all__.append('EnrollmentExplain')
 
 
 # 19
 if not is_model_registered('beacon', 'Topic'):
     class Topic(AbstractTopic):
         class Meta(AbstractTopic.Meta):
-            db_table = 'beacon_discussion_topic'
+            db_table = 'beacon_discuss_topic'
 
     __all__.append('Topic')
 
 
 # 20
+if not is_model_registered('beacon', 'TopicRevision'):
+    class TopicRevision(AbstractTopicRevision):
+        class Meta(AbstractTopicRevision.Meta):
+            db_table = 'beacon_discuss_topic_revision'
+
+    __all__.append('TopicRevision')
+
+
+# 21
 if not is_model_registered('beacon', 'Reply'):
     class Reply(AbstractReply):
         class Meta(AbstractReply.Meta):
-            db_table = 'beacon_discussion_reply'
+            db_table = 'beacon_discuss_reply'
 
     __all__.append('Reply')
+
+
+# 22
+if not is_model_registered('beacon', 'ReplyRevision'):
+    class ReplyRevision(AbstractReplyRevision):
+        class Meta(AbstractReplyRevision.Meta):
+            db_table = 'beacon_discuss_reply_revision'
+
+    __all__.append('ReplyRevision')

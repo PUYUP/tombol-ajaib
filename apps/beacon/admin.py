@@ -20,6 +20,13 @@ Content = get_model('beacon', 'Content')
 GuideRevision = get_model('beacon', 'GuideRevision')
 ChapterRevision = get_model('beacon', 'ChapterRevision')
 ExplainRevision = get_model('beacon', 'ExplainRevision')
+Topic = get_model('beacon', 'Topic')
+TopicRevision = get_model('beacon', 'TopicRevision')
+Reply = get_model('beacon', 'Reply')
+ReplyRevision = get_model('beacon', 'ReplyRevision')
+EnrollmentGuide = get_model('beacon', 'EnrollmentGuide')
+EnrollmentChapter = get_model('beacon', 'EnrollmentChapter')
+EnrollmentExplain = get_model('beacon', 'EnrollmentExplain')
 
 
 # ...
@@ -202,6 +209,119 @@ class ExplainRevisionAdmin(admin.ModelAdmin):
 
 
 # ...
+# EnrollmentGuide
+# ...
+class EnrollmentGuideAdmin(admin.ModelAdmin):
+    """Extend media admin"""
+    model = EnrollmentGuide
+    readonly_fields = ('uuid',)
+    list_display = ('guide', 'date_created', 'date_updated',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'creator':
+            kwargs['queryset'] = Person.objects.prefetch_related('user') \
+                .select_related('user')
+
+        if db_field.name == 'guide':
+            kwargs['queryset'] = Guide.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('creator', 'guide') \
+            .select_related('creator', 'guide')
+
+    def save_model(self, request, obj, form, change):
+        # Append request to signals
+        setattr(obj, 'request', request)
+        super().save_model(request, obj, form, change)
+
+
+# ...
+# EnrollmentChapter
+# ...
+class EnrollmentChapterAdmin(admin.ModelAdmin):
+    """Extend media admin"""
+    model = EnrollmentChapter
+    readonly_fields = ('uuid',)
+    list_display = ('chapter', 'date_created', 'date_updated',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'creator':
+            kwargs['queryset'] = Person.objects.prefetch_related('user') \
+                .select_related('user')
+
+        if db_field.name == 'guide':
+            kwargs['queryset'] = Guide.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        if db_field.name == 'chapter':
+            kwargs['queryset'] = Chapter.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        if db_field.name == 'enrollment_guide':
+            kwargs['queryset'] = EnrollmentGuide.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('creator', 'guide', 'chapter', 'enrollment_guide') \
+            .select_related('creator', 'guide', 'chapter', 'enrollment_guide')
+
+    def save_model(self, request, obj, form, change):
+        # Append request to signals
+        setattr(obj, 'request', request)
+        super().save_model(request, obj, form, change)
+
+
+# ...
+# EnrollmentExplain
+# ...
+class EnrollmentExplainAdmin(admin.ModelAdmin):
+    """Extend media admin"""
+    model = EnrollmentExplain
+    readonly_fields = ('uuid',)
+    list_display = ('explain', 'date_created', 'date_updated',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'creator':
+            kwargs['queryset'] = Person.objects.prefetch_related('user') \
+                .select_related('user')
+
+        if db_field.name == 'guide':
+            kwargs['queryset'] = Guide.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        if db_field.name == 'chapter':
+            kwargs['queryset'] = Chapter.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        if db_field.name == 'explain':
+            kwargs['queryset'] = Explain.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        if db_field.name == 'enrollment_guide':
+            kwargs['queryset'] = EnrollmentGuide.objects.prefetch_related('creator') \
+                .select_related('creator')
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('creator', 'guide', 'chapter', 'explain', 'enrollment_guide') \
+            .select_related('creator', 'guide', 'chapter', 'explain', 'enrollment_guide')
+
+    def save_model(self, request, obj, form, change):
+        # Append request to signals
+        setattr(obj, 'request', request)
+        super().save_model(request, obj, form, change)
+
+
+# ...
 # REGISTER MODEL
 # ...
 admin.site.register(Tag)
@@ -217,3 +337,10 @@ admin.site.register(Content)
 admin.site.register(GuideRevision, GuideRevisionAdmin)
 admin.site.register(ChapterRevision, ChapterRevisionAdmin)
 admin.site.register(ExplainRevision, ExplainRevisionAdmin)
+admin.site.register(Topic)
+admin.site.register(TopicRevision)
+admin.site.register(Reply)
+admin.site.register(ReplyRevision)
+admin.site.register(EnrollmentGuide, EnrollmentGuideAdmin)
+admin.site.register(EnrollmentChapter, EnrollmentChapterAdmin)
+admin.site.register(EnrollmentExplain, EnrollmentExplainAdmin)
